@@ -34,6 +34,11 @@ export const createExpense = async (expenseData: {
   return response.data;
 };
 
+// Função para deletar uma despesa
+export const deleteExpense = async (expenseId: string) => {
+  await axios.delete(`${API_URL}/expenses/${expenseId}`, { headers: getAuthHeader() });
+};
+
 // Funções para Usuários
 export const fetchProtectedData = async () => {
   const response = await axios.get(`${API_URL}/users`, {
