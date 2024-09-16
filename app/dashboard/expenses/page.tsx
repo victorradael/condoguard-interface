@@ -6,12 +6,25 @@ import {
   createExpense,
   deleteExpense,
 } from "../../services/authService";
-import ExpensesChart from "../../components/ExpensesChart";
-import ExpensesByDateChart from "../../components/ExpensesByDateChart";
-import Papa from "papaparse"; // Importa a biblioteca para ler CSV
+import Papa from "papaparse";
+import { z } from "zod";
+
+// Define a schema for CSV expense data
+const CSVExpenseSchema = z.object({
+  description: z.string(),
+  amount: z.string(),
+  date: z.string(),
+});
+
+interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+}
 
 const ExpensesPage: React.FC = () => {
-  const [expenses, setExpenses] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [newExpense, setNewExpense] = useState({
     description: "",
@@ -23,7 +36,12 @@ const ExpensesPage: React.FC = () => {
     const fetchData = async () => {
       try {
         const data = await fetchExpenses();
-        setExpenses(data);
+        if (Array.isArray(data)) {
+          setExpenses(data);
+        } else {
+          console.error("Fetched data is not an array:", data);
+          setError("Erro ao buscar despesas: formato de dados inválido.");
+        }
       } catch (err) {
         console.error("Error fetching expenses:", err);
         setError("Erro ao buscar despesas.");
@@ -33,7 +51,7 @@ const ExpensesPage: React.FC = () => {
     fetchData();
   }, []);
 
-  const expenseTypes = [
+  const EXPENSE_TYPES = [
     "Conta de Água",
     "Conta de Luz",
     "Condomínio",
@@ -82,62 +100,45 @@ const ExpensesPage: React.FC = () => {
     }
   };
 
-const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  Papa.parse(file, {
-    header: true,
-    complete: async (results) => {
-      const expensesFromCSV = results.data;
-      try {
-        for (const expense of expensesFromCSV) {
-          // Verifica se o campo de data existe
-          console.log(expense)
-          if (!expense.date) {
-            throw new Error(`Data inválida encontrada no CSV: ${expense.date}`);
-          }
+    try {
+      const results = await new Promise<Papa.ParseResult<unknown>>((resolve, reject) => {
+        Papa.parse(file, {
+          header: true,
+          complete: resolve,
+          error: reject,
+        });
+      });
 
-          // Tenta converter a data para o formato ISO usando o construtor Date
-          const parsedDate = new Date(expense.date);
+      const expensesFromCSV = z.array(CSVExpenseSchema).parse(results.data);
 
-          // Verifica se a data é válida
-          if (isNaN(parsedDate.getTime())) {
-            throw new Error(`Data inválida encontrada no CSV: ${expense.date}`);
-          }
-
-          // Processa o valor, removendo o símbolo de moeda e substituindo a vírgula por ponto
-          const parsedAmount = parseFloat(
-            expense.amount
-              .replace("R$", "")
-              .replace(".", "")
-              .replace(",", ".")
-              .trim()
-          );
-
-          // Faz a chamada de criação para cada despesa
-          await createExpense({
-            description: expense.description,
-            amount: parsedAmount,
-            date: parsedDate.toISOString(),
-          });
+      for (const expense of expensesFromCSV) {
+        const parsedDate = new Date(expense.date);
+        if (isNaN(parsedDate.getTime())) {
+          throw new Error(`Invalid date in CSV: ${expense.date}`);
         }
 
-        // Recarrega as despesas após o upload
-        const data = await fetchExpenses();
-        setExpenses(data);
-      } catch (err) {
-        console.error("Erro ao processar CSV:", err);
-        setError(
-          "Erro ao processar CSV. Verifique o formato das datas e valores."
-        );
+        const parsedAmount = parseFloat(expense.amount.replace(/[^\d.,]/g, '').replace(',', '.'));
+        if (isNaN(parsedAmount)) {
+          throw new Error(`Invalid amount in CSV: ${expense.amount}`);
+        }
+
+        await createExpense({
+          description: expense.description,
+          amount: parsedAmount,
+          date: parsedDate.toISOString(),
+        });
       }
-    },
-  });
-};
-
-
-
+      const updatedExpenses = await fetchExpenses();
+      setExpenses(updatedExpenses);
+    } catch (err) {
+      console.error("Error processing CSV:", err);
+      setError("Error processing CSV. Please check the date and amount formats.");
+    }
+  };
 
   return (
     <div>
@@ -167,7 +168,7 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
             required
           >
             <option value="">Selecione um tipo de despesa</option>
-            {expenseTypes.map((type) => (
+            {EXPENSE_TYPES.map((type) => (
               <option key={type} value={type}>
                 {type}
               </option>
