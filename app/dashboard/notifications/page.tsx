@@ -23,22 +23,24 @@ const NotificationsPage = () => {
   }, []);
 
   return (
-    <div>
+    <div className="bg-white shadow-md rounded-lg p-6">
       <h1 className="text-2xl font-bold mb-6">Notificações</h1>
-      {error && <p className="text-red-500">{error}</p>}
+      {error && <p className="text-red-500 mb-4">{error}</p>}
       {notifications.length > 0 ? (
-        <ul>
+        <div className="space-y-4">
           {notifications.map((notification) => (
-            <li key={notification.id} className="bg-white p-4 rounded shadow-md mb-4">
-              <p><strong>ID:</strong> {notification.id}</p>
-              <p><strong>Título:</strong> {notification.title}</p>
-              <p><strong>Mensagem:</strong> {notification.message}</p>
-              {/* Botões para editar ou deletar notificação */}
-            </li>
+            <div key={notification.id} className="bg-gray-50 p-4 rounded-md shadow">
+              <p className="font-semibold">{notification.title}</p>
+              <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+              <div className="mt-2">
+                <button className="text-blue-500 hover:underline mr-2">Editar</button>
+                <button className="text-red-500 hover:underline">Deletar</button>
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       ) : (
-        <p>Nenhuma notificação encontrada.</p>
+        <p className="text-gray-600">Nenhuma notificação encontrada.</p>
       )}
     </div>
   );

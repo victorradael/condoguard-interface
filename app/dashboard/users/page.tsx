@@ -2,10 +2,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { fetchUsers } from '../../services/authService';
+import { fetchUsers, deleteUser } from '../../services/authService';
+
+interface User {
+  id: string;
+  username: string;
+  email: string;
+}
 
 const UsersPage: React.FC = () => {
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,23 +28,42 @@ const UsersPage: React.FC = () => {
     fetchData();
   }, []);
 
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      await deleteUser(userId);
+      // Refresh the user list after deletion
+      const updatedUsers = await fetchUsers();
+      setUsers(updatedUsers);
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      setError('Erro ao deletar usuário.');
+    }
+  };
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Gerenciar Usuários</h1>
-      {error && <p className="text-red-500">{error}</p>}
+    <div className="bg-white shadow-md rounded-lg p-6">
+      <h1 className="text-2xl font-bold mb-6 text-[#2c3e50]">Gerenciar Usuários</h1>
+      {error && <p className="text-[#e74c3c] mb-4">{error}</p>}
       {users.length > 0 ? (
-        <ul>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {users.map((user) => (
-            <li key={user.id} className="bg-white p-4 rounded shadow-md mb-4">
-              <p><strong>ID:</strong> {user.id}</p>
-              <p><strong>Nome:</strong> {user.username}</p>
-              <p><strong>Email:</strong> {user.email}</p>
-              {/* Botões para editar ou deletar usuário */}
-            </li>
+            <div key={user.id} className="bg-[#ecf0f1] p-4 rounded-md shadow">
+              <p className="font-semibold text-[#2c3e50]">{user.username}</p>
+              <p className="text-sm text-[#34495e]">{user.email}</p>
+              <div className="mt-2">
+                <button className="text-[#3498db] hover:underline mr-2">Editar</button>
+                <button 
+                  onClick={() => handleDeleteUser(user.id)}
+                  className="text-[#e74c3c] hover:underline"
+                >
+                  Deletar
+                </button>
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       ) : (
-        <p>Nenhum usuário encontrado.</p>
+        <p className="text-[#34495e]">Nenhum usuário encontrado.</p>
       )}
     </div>
   );

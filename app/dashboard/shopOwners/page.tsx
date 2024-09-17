@@ -23,22 +23,24 @@ const ShopOwnersPage = () => {
   }, []);
 
   return (
-    <div>
+    <div className="bg-white shadow-md rounded-lg p-6">
       <h1 className="text-2xl font-bold mb-6">Lojas</h1>
-      {error && <p className="text-red-500">{error}</p>}
+      {error && <p className="text-red-500 mb-4">{error}</p>}
       {shopOwners.length > 0 ? (
-        <ul>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {shopOwners.map((shopOwner) => (
-            <li key={shopOwner.id} className="bg-white p-4 rounded shadow-md mb-4">
-              <p><strong>ID:</strong> {shopOwner.id}</p>
-              <p><strong>Nome:</strong> {shopOwner.name}</p>
-              <p><strong>Endereço:</strong> {shopOwner.address}</p>
-              {/* Botões para editar ou deletar loja */}
-            </li>
+            <div key={shopOwner.id} className="bg-gray-50 p-4 rounded-md shadow">
+              <p className="font-semibold">{shopOwner.name}</p>
+              <p className="text-sm text-gray-600">{shopOwner.address}</p>
+              <div className="mt-2">
+                <button className="text-blue-500 hover:underline mr-2">Editar</button>
+                <button className="text-red-500 hover:underline">Deletar</button>
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       ) : (
-        <p>Nenhuma loja encontrada.</p>
+        <p className="text-gray-600">Nenhuma loja encontrada.</p>
       )}
     </div>
   );

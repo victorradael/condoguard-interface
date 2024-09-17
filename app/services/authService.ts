@@ -14,7 +14,20 @@ export const login = async (username: string, password: string) => {
     username,
     password,
   });
-  return response.data;
+  
+  interface LoginResponse {
+    token: string;
+    roles: string[];
+  }
+
+  const data = response.data as LoginResponse;
+  
+  if (data.token && data.roles) {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('role', data.roles[0]); // Assuming the first role is the primary role
+  }
+  
+  return data;
 };
 
 export const register = async (userData: any) => {
@@ -87,4 +100,36 @@ export const fetchShopOwners = async () => {
   return response.data;
 };
 
+export const deleteUser = async (userId: string) => {
+  try {
+    const response = await axios.delete(`${API_URL}/users/${userId}`, {
+      headers: getAuthHeader(),
+    });
+
+    if (response.status !== 204) {
+      throw new Error('Failed to delete user');
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    throw error;
+  }
+};
+
 // Funções de CRUD adicionais podem ser implementadas conforme necessário
+export const createAccount = async (username: string, email: string, password: string) => {
+
+  const response = await axios.post(`${API_URL}/auth/register`, {
+    username,
+    email,
+    password,
+    roles: ["ROLE_USER"]
+  });
+
+  if (response.status !== 201) {
+    throw new Error('Failed to create account');
+  }
+
+  return response.data;
+};
