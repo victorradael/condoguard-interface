@@ -9,13 +9,6 @@ import {
 import Papa from "papaparse";
 import { z } from "zod";
 
-// Define a schema for CSV expense data
-const CSVExpenseSchema = z.object({
-  description: z.string(),
-  amount: z.string(),
-  date: z.string(),
-});
-
 interface Expense {
   id: string;
   description: string;
@@ -23,59 +16,74 @@ interface Expense {
   date: string;
 }
 
+const EXPENSE_TYPES = [
+  "Luz",
+  "Fundo de Reserva",
+  "Agua Área Comum",
+  "Água",
+  "Gás",
+  "Outros",
+] as const;
+
+const ITEMS_PER_PAGE = 9;
+
+const CSVExpenseSchema = z.object({
+  description: z.string(),
+  amount: z.string(),
+  date: z.string(),
+});
+
 const ExpensesPage: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [newExpense, setNewExpense] = useState({
     description: "",
     amount: 0,
     date: "",
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortField, setSortField] = useState<keyof Expense>('date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [filterType, setFilterType] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = await fetchExpenses();
-        if (Array.isArray(data)) {
-          setExpenses(data);
-        } else {
-          console.error("Fetched data is not an array:", data);
-          setError("Erro ao buscar despesas: formato de dados inválido.");
-        }
-      } catch (err) {
-        console.error("Error fetching expenses:", err);
-        setError("Erro ao buscar despesas.");
-      }
-    };
-
     fetchData();
   }, []);
 
-  const EXPENSE_TYPES = [
-    "Conta de Água",
-    "Conta de Luz",
-    "Condomínio",
-    "Internet",
-    "Manutenção",
-    "Outros",
-  ];
+  useEffect(() => {
+    const filtered = expenses.filter(expense => 
+      (filterType === '' || expense.description === filterType) &&
+      (searchTerm === '' || 
+        expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        expense.amount.toString().includes(searchTerm) ||
+        expense.date.includes(searchTerm)
+      )
+    );
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
+    const sorted = filtered.sort((a, b) => {
+      if (a[sortField] < b[sortField]) return sortDirection === 'asc' ? -1 : 1;
+      if (a[sortField] > b[sortField]) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
 
-    if (name === "amount") {
-      const numericValue = value.replace(/\D/g, "");
-      const floatValue = parseFloat(numericValue) / 100;
-      setNewExpense({ ...newExpense, [name]: floatValue });
-    } else {
-      setNewExpense({ ...newExpense, [name]: value });
+    setFilteredExpenses(sorted);
+  }, [expenses, filterType, searchTerm, sortField, sortDirection]);
+
+  const fetchData = async () => {
+    try {
+      const data = await fetchExpenses();
+      setExpenses(data);
+    } catch (err) {
+      console.error("Error fetching expenses:", err);
+      setError("Erro ao buscar despesas.");
     }
   };
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewExpense({ ...newExpense, date: e.target.value });
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setNewExpense({ ...newExpense, [name]: value });
   };
 
   const handleCreateExpense = async (e: React.FormEvent) => {
@@ -132,122 +140,168 @@ const ExpensesPage: React.FC = () => {
           date: parsedDate.toISOString(),
         });
       }
-      const updatedExpenses = await fetchExpenses();
-      setExpenses(updatedExpenses);
+      
+      fetchData(); // Refresh the expenses list after adding new ones
     } catch (err) {
       console.error("Error processing CSV:", err);
       setError("Error processing CSV. Please check the date and amount formats.");
     }
   };
 
-  return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Despesas</h1>
-      {error && <p className="text-red-500">{error}</p>}
+  const handleSort = (field: keyof Expense) => {
+    if (field === sortField) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
-      {/* Upload de CSV */}
+  const totalPages = Math.ceil(filteredExpenses.length / ITEMS_PER_PAGE);
+  const paginatedExpenses = filteredExpenses.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  return (
+    <div className="bg-[#ecf0f1] shadow-md rounded-lg p-6">
+      <h1 className="text-2xl font-bold mb-6 text-[#2c3e50]">Despesas</h1>
+      {error && <p className="text-[#e74c3c] mb-4">{error}</p>}
+
       <div className="mb-6">
-        <label className="block text-gray-700">Upload de CSV:</label>
+        <h2 className="text-xl font-semibold mb-2 text-[#2c3e50]">Upload de CSV</h2>
         <input
           type="file"
           accept=".csv"
           onChange={handleFileUpload}
-          className="w-full p-2 border border-gray-300 rounded"
+          className="w-full p-2 border border-[#34495e] rounded text-[#2c3e50]"
         />
       </div>
 
-      {/* Formulário para criar nova despesa */}
       <form onSubmit={handleCreateExpense} className="mb-6">
-        <div className="mb-4">
-          <label className="block text-gray-700">Tipo de Despesa:</label>
-          <select
-            name="description"
-            value={newExpense.description}
-            onChange={handleInputChange}
-            className="w-full p-2 border border-gray-300 rounded"
-            required
+        <h2 className="text-xl font-semibold mb-2 text-[#2c3e50]">Nova Despesa</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-[#2c3e50]">Tipo de Despesa:</label>
+            <select
+              name="description"
+              value={newExpense.description}
+              onChange={handleInputChange}
+              className="mt-1 block w-full rounded-md border-[#34495e] shadow-sm focus:border-[#3498db] focus:ring focus:ring-[#3498db] focus:ring-opacity-50"
+              required
+            >
+              <option value="">Selecione um tipo de despesa</option>
+              {EXPENSE_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#2c3e50]">Valor:</label>
+            <input
+              type="number"
+              name="amount"
+              value={newExpense.amount}
+              onChange={handleInputChange}
+              className="mt-1 block w-full rounded-md border-[#34495e] shadow-sm focus:border-[#3498db] focus:ring focus:ring-[#3498db] focus:ring-opacity-50"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#2c3e50]">Data:</label>
+            <input
+              type="date"
+              name="date"
+              value={newExpense.date}
+              onChange={handleInputChange}
+              className="mt-1 block w-full rounded-md border-[#34495e] shadow-sm focus:border-[#3498db] focus:ring focus:ring-[#3498db] focus:ring-opacity-50"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="mt-4 px-4 py-2 bg-[#3498db] text-white rounded hover:bg-[#2980b9] focus:outline-none focus:ring-2 focus:ring-[#3498db] focus:ring-opacity-50"
           >
-            <option value="">Selecione um tipo de despesa</option>
-            {EXPENSE_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
+            Criar
+          </button>
         </div>
-        <div className="mb-4">
-          <label className="block text-gray-700">Valor:</label>
-          <input
-            type="text"
-            name="amount"
-            value={newExpense.amount.toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            })}
-            onChange={handleInputChange}
-            className="w-full p-2 border border-gray-300 rounded"
-            required
-          />
-        </div>
-        <div className="mb-4">
-          <label className="block text-gray-700">Data:</label>
-          <input
-            type="date"
-            name="date"
-            value={newExpense.date}
-            onChange={handleDateChange}
-            className="w-full p-2 border border-gray-300 rounded"
-            required
-          />
-        </div>
-        <button
-          type="submit"
-          className="bg-blue-500 text-white py-2 px-4 rounded"
-        >
-          Criar Despesa
-        </button>
       </form>
 
-      {expenses.length > 0 ? (
+      <div className="mb-4 flex w-full items-center">
+        <input
+          type="text"
+          placeholder="Pesquisar despesas..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="p-2 border border-[#34495e] rounded mr-2 w-full"
+        />
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          className="p-2 border border-[#34495e] rounded"
+        >
+          <option value="">Todos os tipos</option>
+          {EXPENSE_TYPES.map((type) => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+      </div>
+
+      <h2 className="text-xl font-semibold mb-2 text-[#2c3e50]">Lista de Despesas</h2>
+      {paginatedExpenses.length > 0 ? (
         <>
-          {/* Lista de despesas */}
-          <ul>
-            {expenses.map((expense) => (
-              <li
-                key={expense.id}
-                className="bg-white p-4 rounded shadow-md mb-4 flex justify-between items-center"
-              >
-                <div>
-                  <p>
-                    <strong>ID:</strong> {expense.id}
-                  </p>
-                  <p>
-                    <strong>Descrição:</strong> {expense.description}
-                  </p>
-                  <p>
-                    <strong>Valor:</strong>{" "}
-                    {expense.amount.toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    })}
-                  </p>
-                  <p>
-                    <strong>Data:</strong>{" "}
-                    {new Date(expense.date).toLocaleDateString("pt-BR")}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleDeleteExpense(expense.id)}
-                  className="bg-red-500 text-white py-1 px-2 rounded"
-                >
-                  Deletar
-                </button>
-              </li>
-            ))}
-          </ul>
+          <table className="w-full mb-4">
+            <thead>
+              <tr className="bg-[#34495e] text-white">
+                <th className="p-2 cursor-pointer" onClick={() => handleSort('description')}>Descrição</th>
+                <th className="p-2 cursor-pointer" onClick={() => handleSort('amount')}>Valor</th>
+                <th className="p-2 cursor-pointer" onClick={() => handleSort('date')}>Data</th>
+                <th className="p-2">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedExpenses.map((expense) => (
+                <tr key={expense.id} className="border-b border-[#34495e]">
+                  <td className="p-2">{expense.description}</td>
+                  <td className="p-2">
+                    {expense.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </td>
+                  <td className="p-2">{new Date(expense.date).toLocaleDateString('pt-BR')}</td>
+                  <td className="p-2">
+                    <button className="text-[#3498db] hover:underline mr-2">Editar</button>
+                    <button
+                      onClick={() => handleDeleteExpense(expense.id)}
+                      className="text-[#e74c3c] hover:underline"
+                    >
+                      Deletar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="flex justify-between items-center">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 bg-[#3498db] text-white rounded disabled:bg-gray-300"
+            >
+              Anterior
+            </button>
+            <span>{currentPage} de {totalPages}</span>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 bg-[#3498db] text-white rounded disabled:bg-gray-300"
+            >
+              Próxima
+            </button>
+          </div>
         </>
       ) : (
-        <p>Nenhuma despesa encontrada.</p>
+        <p className="text-[#34495e]">Nenhuma despesa encontrada.</p>
       )}
     </div>
   );

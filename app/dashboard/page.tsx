@@ -17,7 +17,11 @@ const DashboardPage: React.FC = () => {
     const fetchData = async () => {
       try {
         const data = await fetchExpenses();
-        setExpenses(data);
+        if (Array.isArray(data)) {
+          setExpenses(data);
+        } else {
+          throw new Error("Dados recebidos não são um array");
+        }
       } catch (err) {
         console.error("Error fetching expenses:", err);
         setError("Erro ao buscar despesas.");
@@ -30,9 +34,9 @@ const DashboardPage: React.FC = () => {
 
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
-      {error && <p className="text-red-500">{error}</p>}
+    <div className="bg-white shadow-md rounded-lg p-6">
+      <h1 className="text-2xl font-bold mb-6 text-[#2c3e50]">Dashboard</h1>
+      {error && <p className="text-[#e74c3c] mb-4">{error}</p>}
 
       {expenses.length > 0 ? (
         <>
@@ -43,7 +47,7 @@ const DashboardPage: React.FC = () => {
           <ExpensesByDateChart expenses={expenses} />
         </>
       ) : (
-        <p>Nenhuma despesa encontrada.</p>
+        <p className="text-[#34495e]">Nenhuma despesa encontrada.</p>
       )}
     </div>
   );

@@ -18,9 +18,9 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <aside className="w-64 bg-white shadow-md">
-        <div className="p-4 border-b flex justify-center">
+    <div className="flex h-screen bg-[#ecf0f1]">
+      <aside className="w-64 bg-[#2c3e50] shadow-md">
+        <div className="p-4 border-b border-[#34495e] flex justify-center">
           <Image
             src="https://raw.githubusercontent.com/victorradael/condoguard/81f8c3663e2bacb222beef5032bd9c52b9903019/assets/condoguard-logo.svg"
             alt="CondoGuard Logo"
@@ -29,29 +29,29 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
           />
         </div>
         <nav className="mt-6">
-          <Link href="/dashboard" className="block px-4 py-2 text-gray-600 hover:bg-gray-100">
+          <Link href="/dashboard" className="block px-4 py-2 text-[#ecf0f1] hover:bg-[#34495e]">
             Dashboard
           </Link>
-          <Link href="/dashboard/users" className="block px-4 py-2 text-gray-600 hover:bg-gray-100">
+          <Link href="/dashboard/users" className="block px-4 py-2 text-[#ecf0f1] hover:bg-[#34495e]">
             Usuários
           </Link>
-          <Link href="/dashboard/residents" className="block px-4 py-2 text-gray-600 hover:bg-gray-100">
+          <Link href="/dashboard/residents" className="block px-4 py-2 text-[#ecf0f1] hover:bg-[#34495e]">
             Residências
           </Link>
-          <Link href="/dashboard/shopOwners" className="block px-4 py-2 text-gray-600 hover:bg-gray-100">
+          <Link href="/dashboard/shopOwners" className="block px-4 py-2 text-[#ecf0f1] hover:bg-[#34495e]">
             Lojas
           </Link>
-          <Link href="/dashboard/notifications" className="block px-4 py-2 text-gray-600 hover:bg-gray-100">
+          <Link href="/dashboard/notifications" className="block px-4 py-2 text-[#ecf0f1] hover:bg-[#34495e]">
             Notificações
           </Link>
-          <Link href="/dashboard/expenses" className="block px-4 py-2 text-gray-600 hover:bg-gray-100">
+          <Link href="/dashboard/expenses" className="block px-4 py-2 text-[#ecf0f1] hover:bg-[#34495e]">
             Despesas
           </Link>
         </nav>
-        <div className="absolute bottom-0 w-64 p-4 border-t">
+        <div className="absolute bottom-0 w-64 p-4 border-t border-[#34495e]">
           <button
             onClick={handleLogout}
-            className="w-full px-4 py-2 text-sm text-white bg-red-500 rounded hover:bg-red-600"
+            className="w-full px-4 py-2 text-sm text-white bg-[#e74c3c] rounded hover:bg-[#c0392b]"
           >
             Logout
           </button>
