@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "./services/authService";
 import Image from "next/image";
+import Link from "next/link";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -76,6 +77,12 @@ const Login = () => {
             </div>
           </div>
         </form>
+        <p className="mt-4 text-center text-sm text-[#34495e]">
+          Não tem uma conta?{' '}
+          <Link href="/create-account" className="text-[#3498db] hover:underline">
+            Crie uma agora
+          </Link>
+        </p>
       </div>
     </div>
   );

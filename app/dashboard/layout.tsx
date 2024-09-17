@@ -8,14 +8,18 @@ import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
 
 const DashboardLayout = ({ children }: { children: ReactNode }) => {
-  const { token, setToken } = useAuth();
+  const { token, role, setToken, setRole } = useAuth();
   const router = useRouter();
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('role');
     setToken(null);
+    setRole(null);
     router.push('/');
   };
+
+  const isAdmin = role === 'ROLE_ADMIN';
 
   return (
     <div className="flex h-screen bg-[#ecf0f1]">
@@ -32,15 +36,19 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
           <Link href="/dashboard" className="block px-4 py-2 text-[#ecf0f1] hover:bg-[#34495e]">
             Dashboard
           </Link>
-          <Link href="/dashboard/users" className="block px-4 py-2 text-[#ecf0f1] hover:bg-[#34495e]">
-            Usuários
-          </Link>
-          <Link href="/dashboard/residents" className="block px-4 py-2 text-[#ecf0f1] hover:bg-[#34495e]">
-            Residências
-          </Link>
-          <Link href="/dashboard/shopOwners" className="block px-4 py-2 text-[#ecf0f1] hover:bg-[#34495e]">
-            Lojas
-          </Link>
+          {isAdmin && (
+            <>
+              <Link href="/dashboard/users" className="block px-4 py-2 text-[#ecf0f1] hover:bg-[#34495e]">
+                Usuários
+              </Link>
+              <Link href="/dashboard/residents" className="block px-4 py-2 text-[#ecf0f1] hover:bg-[#34495e]">
+                Residências
+              </Link>
+              <Link href="/dashboard/shopOwners" className="block px-4 py-2 text-[#ecf0f1] hover:bg-[#34495e]">
+                Lojas
+              </Link>
+            </>
+          )}
           <Link href="/dashboard/notifications" className="block px-4 py-2 text-[#ecf0f1] hover:bg-[#34495e]">
             Notificações
           </Link>

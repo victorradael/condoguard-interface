@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { fetchUsers } from '../../services/authService';
+import { fetchUsers, deleteUser } from '../../services/authService';
 
 interface User {
   id: string;
@@ -28,6 +28,18 @@ const UsersPage: React.FC = () => {
     fetchData();
   }, []);
 
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      await deleteUser(userId);
+      // Refresh the user list after deletion
+      const updatedUsers = await fetchUsers();
+      setUsers(updatedUsers);
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      setError('Erro ao deletar usuário.');
+    }
+  };
+
   return (
     <div className="bg-white shadow-md rounded-lg p-6">
       <h1 className="text-2xl font-bold mb-6 text-[#2c3e50]">Gerenciar Usuários</h1>
@@ -40,7 +52,12 @@ const UsersPage: React.FC = () => {
               <p className="text-sm text-[#34495e]">{user.email}</p>
               <div className="mt-2">
                 <button className="text-[#3498db] hover:underline mr-2">Editar</button>
-                <button className="text-[#e74c3c] hover:underline">Deletar</button>
+                <button 
+                  onClick={() => handleDeleteUser(user.id)}
+                  className="text-[#e74c3c] hover:underline"
+                >
+                  Deletar
+                </button>
               </div>
             </div>
           ))}
