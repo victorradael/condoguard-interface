@@ -1,11 +1,11 @@
 <div style="text-align: center;">
-    <img src="https://raw.githubusercontent.com/victorradael/condoguard/81f8c3663e2bacb222beef5032bd9c52b9903019/assets/condoguard-logo.svg" alt="CondoguardLogo" width="200" height="200">
+    <img src="../assets/condoguard-logo.png" alt="CondoguardLogo"  height="200">
 </div>
 
 
-## CondoGuard Frontend
+## Web
 
-🌟 **CondoGuard** é uma aplicação web para ajudar condomínios a administrar suas despesas condominiais e prever possíveis problemas futuros. Este é o repositório do frontend da aplicação, desenvolvido com **Next.js** e **TypeScript**.
+🌟 **CONDOGUARD Web** é uma aplicação web para ajudar condomínios a administrar suas despesas condominiais e prever possíveis problemas futuros. Este é o repositório do frontend da aplicação, desenvolvido com **Next.js** e **TypeScript**.
 
 ### 🛠 Tecnologias Utilizadas
 
