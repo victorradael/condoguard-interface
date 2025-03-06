@@ -1,5 +1,5 @@
 <div style="text-align: center;">
-    <img src="https://github.com/victorradael/condoguard/blob/main/assets/condoguard-logo.png?raw=true" alt="CondoguardLogo"  height="200">
+    <img src="https://github.com/victorradael/condoguard/blob/main/assets/condoguard-logo.png?raw=true" alt="CondoguardLogo"  height="150">
 </div>
 
 

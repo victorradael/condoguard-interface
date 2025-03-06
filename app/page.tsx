@@ -30,16 +30,15 @@ const Login = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="px-8 py-6 mt-4 text-left bg-white shadow-lg rounded-lg">
+      <div className="px-8 py-6 mt-4 text-left bg-gray-900 shadow-lg rounded-lg">
         <div className="flex justify-center">
           <Image
-            src="https://raw.githubusercontent.com/victorradael/condoguard/81f8c3663e2bacb222beef5032bd9c52b9903019/assets/condoguard-logo.svg"
+            src="https://github.com/victorradael/condoguard/blob/main/assets/condoguard-logo.png?raw=true"
             alt="CondoGuard Logo"
-            width={200}
-            height={100}
+            width={325}
+            height={150}
           />
         </div>
-        <h3 className="text-2xl font-bold text-center mt-4">Login to your account</h3>
         <form onSubmit={handleLogin}>
           <div className="mt-4">
             <div>
@@ -48,7 +47,7 @@ const Login = () => {
                 type="text"
                 placeholder="Username"
                 id="username"
-                className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-600"
+                className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-600 bg-gray-600 text-white"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -60,7 +59,7 @@ const Login = () => {
                 type="password"
                 placeholder="Password"
                 id="password"
-                className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-600"
+                className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-600 bg-gray-600 text-white"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -77,7 +76,7 @@ const Login = () => {
             </div>
           </div>
         </form>
-        <p className="mt-4 text-center text-sm text-[#34495e]">
+        <p className="mt-4 text-center text-sm text-[#f1f1f1]">
           Não tem uma conta?{' '}
           <Link href="/create-account" className="text-[#3498db] hover:underline">
             Crie uma agora

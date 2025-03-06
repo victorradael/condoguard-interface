@@ -7,7 +7,7 @@ import { AuthProvider } from './context/AuthContext';
 export const metadata: Metadata = {
   title: 'CondoGuard',
   description: 'Aplicação de gerenciamento de despesas e comunicação para condomínios',
-  icons: 'https://raw.githubusercontent.com/victorradael/condoguard/81f8c3663e2bacb222beef5032bd9c52b9903019/assets/condoguard-logo.svg',
+  icons: 'https://raw.githubusercontent.com/victorradael/condoguard/eec7d267e82e933f725b617613bf306b9d318125/assets/condoguard-icon.svg',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

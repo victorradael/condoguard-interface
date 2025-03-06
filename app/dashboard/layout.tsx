@@ -26,7 +26,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
       <aside className="w-64 bg-[#2c3e50] shadow-md">
         <div className="p-4 border-b border-[#34495e] flex justify-center">
           <Image
-            src="https://raw.githubusercontent.com/victorradael/condoguard/81f8c3663e2bacb222beef5032bd9c52b9903019/assets/condoguard-logo.svg"
+            src="https://github.com/victorradael/condoguard/blob/main/assets/condoguard-icon.png?raw=true"
             alt="CondoGuard Logo"
             width={150}
             height={50}
