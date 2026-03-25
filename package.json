@@ -3,32 +3,33 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "check": "biome check --write ."
   },
   "dependencies": {
-    "@types/axios": "^0.9.36",
     "axios": "^1.7.7",
     "chart.js": "^4.4.4",
     "chartjs-adapter-date-fns": "^3.0.0",
-    "next": "14.2.8",
+    "date-fns": "^3.6.0",
+    "next": "^15.2.0",
     "papaparse": "^5.4.1",
-    "react": "^18",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "react-chartjs-2": "^5.2.0",
-    "react-dom": "^18",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@biomejs/biome": "^1.9.4",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.0.0",
     "@types/papaparse": "^5.3.14",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "eslint": "^8",
-    "eslint-config-next": "14.2.8",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tailwindcss": "^4.0.0",
     "typescript": "^5"
   }
 }

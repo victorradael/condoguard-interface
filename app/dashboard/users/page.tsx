@@ -1,72 +1,73 @@
-// app/dashboard/users/page.tsx
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { fetchUsers, deleteUser } from '../../services/authService';
+import { Card } from "@/components/ui/card";
+import { deleteUser, fetchUsers } from "@/lib/api";
+import type { User } from "@/types";
+import { useEffect, useState } from "react";
 
-interface User {
-  id: string;
-  username: string;
-  email: string;
-}
-
-const UsersPage: React.FC = () => {
+function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = await fetchUsers();
-        setUsers(data);
-      } catch (err) {
-        console.error('Error fetching users:', err);
-        setError('Erro ao buscar usuários.');
-      }
-    };
-
-    fetchData();
+    fetchUsers()
+      .then(({ data }) => setUsers(Array.isArray(data) ? data : []))
+      .catch(() => setError("Erro ao buscar usuários."))
+      .finally(() => setLoading(false));
   }, []);
 
-  const handleDeleteUser = async (userId: string) => {
+  const handleDelete = async (id: string) => {
     try {
-      await deleteUser(userId);
-      // Refresh the user list after deletion
-      const updatedUsers = await fetchUsers();
-      setUsers(updatedUsers);
-    } catch (err) {
-      console.error('Error deleting user:', err);
-      setError('Erro ao deletar usuário.');
+      await deleteUser(id);
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+    } catch {
+      setError("Erro ao deletar usuário.");
     }
   };
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-6">
-      <h1 className="text-2xl font-bold mb-6 text-[#2c3e50]">Gerenciar Usuários</h1>
-      {error && <p className="text-[#e74c3c] mb-4">{error}</p>}
-      {users.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-text-primary">Usuários</h1>
+        <p className="mt-1 text-sm text-text-secondary">Gerenciamento de usuários do sistema</p>
+      </div>
+
+      {error ? (
+        <div className="rounded-md bg-red-50 px-4 py-3 text-sm text-danger">{error}</div>
+      ) : null}
+
+      {loading ? (
+        <div className="py-12 text-center text-text-secondary">Carregando...</div>
+      ) : users.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {users.map((user) => (
-            <div key={user.id} className="bg-[#ecf0f1] p-4 rounded-md shadow">
-              <p className="font-semibold text-[#2c3e50]">{user.username}</p>
-              <p className="text-sm text-[#34495e]">{user.email}</p>
-              <div className="mt-2">
-                <button className="text-[#3498db] hover:underline mr-2">Editar</button>
-                <button 
-                  onClick={() => handleDeleteUser(user.id)}
-                  className="text-[#e74c3c] hover:underline"
-                >
-                  Deletar
-                </button>
+            <Card key={user.id}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-semibold text-text-primary">{user.username}</p>
+                  <p className="mt-0.5 text-sm text-text-secondary">{user.email}</p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button className="text-sm text-accent hover:underline">Editar</button>
+                  <button
+                    onClick={() => handleDelete(user.id)}
+                    className="text-sm text-danger hover:underline"
+                  >
+                    Deletar
+                  </button>
+                </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       ) : (
-        <p className="text-[#34495e]">Nenhum usuário encontrado.</p>
+        <Card>
+          <p className="text-center text-text-secondary">Nenhum usuário encontrado.</p>
+        </Card>
       )}
     </div>
   );
-};
+}
 
 export default UsersPage;

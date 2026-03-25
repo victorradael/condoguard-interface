@@ -1,310 +1,405 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import {
-  fetchExpenses,
-  createExpense,
-  deleteExpense,
-} from "../../services/authService";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { createExpense, deleteExpense, fetchExpenses, fetchResidents, fetchShopOwners } from "@/lib/api";
+import { EXPENSE_DESCRIPTIONS, type Expense, type Resident, type ShopOwner } from "@/types";
 import Papa from "papaparse";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
-interface Expense {
-  id: string;
-  description: string;
-  amount: number;
-  date: string;
-}
-
-const EXPENSE_TYPES = [
-  "Luz",
-  "Fundo de Reserva",
-  "Agua Área Comum",
-  "Água",
-  "Gás",
-  "Outros",
-] as const;
+const CSV_SCHEMA = z.object({
+  description: z.string(),
+  amount: z.string(),
+  dueDate: z.string(),
+  residentId: z.string().optional(),
+  shopOwnerId: z.string().optional(),
+});
 
 const ITEMS_PER_PAGE = 9;
 
-const CSVExpenseSchema = z.object({
-  description: z.string(),
-  amount: z.string(),
-  date: z.string(),
-});
+// Converte reais (string) → centavos (int)
+const toCents = (value: string) => Math.round(Number.parseFloat(value) * 100);
+// Converte centavos → reais formatado
+const fromCents = (cents: number) =>
+  (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-const ExpensesPage: React.FC = () => {
+type SortField = "description" | "amountCents" | "dueDate";
+type SortDir = "asc" | "desc";
+
+const filterOptions = [
+  { value: "", label: "Todos os tipos" },
+  ...EXPENSE_DESCRIPTIONS.map((d) => ({ value: d, label: d })),
+];
+
+const descriptionOptions = [
+  { value: "", label: "Selecione um tipo" },
+  ...EXPENSE_DESCRIPTIONS.map((d) => ({ value: d, label: d })),
+];
+
+type LinkType = "residentId" | "shopOwnerId";
+
+function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
+  const [residents, setResidents] = useState<Resident[]>([]);
+  const [shopOwners, setShopOwners] = useState<ShopOwner[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [newExpense, setNewExpense] = useState({
+  const [loading, setLoading] = useState(false);
+
+  const [form, setForm] = useState({
     description: "",
-    amount: 0,
-    date: "",
+    amount: "",
+    dueDate: "",
+    linkType: "residentId" as LinkType,
+    linkId: "",
   });
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState("");
+  const [sortField, setSortField] = useState<SortField>("dueDate");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortField, setSortField] = useState<keyof Expense>('date');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [filterType, setFilterType] = useState<string>('');
-  const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    const filtered = expenses.filter(expense => 
-      (filterType === '' || expense.description === filterType) &&
-      (searchTerm === '' || 
-        expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        expense.amount.toString().includes(searchTerm) ||
-        expense.date.includes(searchTerm)
-      )
-    );
-
-    const sorted = filtered.sort((a, b) => {
-      if (a[sortField] < b[sortField]) return sortDirection === 'asc' ? -1 : 1;
-      if (a[sortField] > b[sortField]) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-    setFilteredExpenses(sorted);
-  }, [expenses, filterType, searchTerm, sortField, sortDirection]);
-
-  const fetchData = async () => {
+  const loadExpenses = async () => {
     try {
-      const data = await fetchExpenses();
-      setExpenses(data);
-    } catch (err) {
-      console.error("Error fetching expenses:", err);
+      const { data } = await fetchExpenses();
+      setExpenses(Array.isArray(data) ? data : []);
+    } catch {
       setError("Erro ao buscar despesas.");
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setNewExpense({ ...newExpense, [name]: value });
+  useEffect(() => {
+    loadExpenses();
+    fetchResidents().then(({ data }) => setResidents(Array.isArray(data) ? data : [])).catch(() => {});
+    fetchShopOwners().then(({ data }) => setShopOwners(Array.isArray(data) ? data : [])).catch(() => {});
+  }, []);
+
+  const residentOptions = [
+    { value: "", label: "Selecione um morador" },
+    ...residents.map((r) => ({ value: r.id, label: r.name })),
+  ];
+
+  const shopOwnerOptions = [
+    { value: "", label: "Selecione um lojista" },
+    ...shopOwners.map((s) => ({ value: s.id, label: s.name })),
+  ];
+
+  const filtered = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    return [...expenses]
+      .filter(
+        (e) =>
+          (!filterType || e.description === filterType) &&
+          (!term ||
+            e.description.toLowerCase().includes(term) ||
+            String(e.amountCents).includes(term) ||
+            e.dueDate.includes(term))
+      )
+      .sort((a, b) => {
+        const av = a[sortField];
+        const bv = b[sortField];
+        const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+  }, [expenses, filterType, searchTerm, sortField, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  const handleSort = (field: SortField) => {
+    if (field === sortField) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir("asc");
+    }
+    setCurrentPage(1);
   };
 
-  const handleCreateExpense = async (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    const cents = toCents(form.amount);
+    if (Number.isNaN(cents) || cents < 0) {
+      setError("O valor não pode ser negativo.");
+      return;
+    }
+
+    setLoading(true);
     try {
-      const createdExpense = await createExpense(newExpense);
-      setExpenses([...expenses, createdExpense]);
-      setNewExpense({ description: "", amount: 0, date: "" });
-    } catch (err) {
-      console.error("Error creating expense:", err);
+      await createExpense({
+        description: form.description,
+        amountCents: cents,
+        dueDate: new Date(form.dueDate).toISOString(),
+        [form.linkType]: form.linkId,
+      });
+      setForm({ description: "", amount: "", dueDate: "", linkType: "residentId", linkId: "" });
+      await loadExpenses();
+    } catch {
       setError("Erro ao criar despesa.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteExpense = async (id: string) => {
+  const handleDelete = async (id: string) => {
     try {
       await deleteExpense(id);
-      setExpenses(expenses.filter((expense) => expense.id !== id));
-    } catch (err) {
-      console.error("Error deleting expense:", err);
+      setExpenses((prev) => prev.filter((e) => e.id !== id));
+    } catch {
       setError("Erro ao deletar despesa.");
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setError(null);
 
     try {
-      const results = await new Promise<Papa.ParseResult<unknown>>((resolve, reject) => {
-        Papa.parse(file, {
-          header: true,
-          complete: resolve,
-          error: reject,
-        });
-      });
+      const result = await new Promise<Papa.ParseResult<unknown>>((resolve, reject) =>
+        Papa.parse(file, { header: true, complete: resolve, error: reject })
+      );
 
-      const expensesFromCSV = z.array(CSVExpenseSchema).parse(results.data);
+      const rows = z.array(CSV_SCHEMA).parse(result.data);
+      for (const row of rows) {
+        const parsedDate = new Date(row.dueDate);
+        const parsedAmount = Number.parseFloat(row.amount.replace(/[^\d.,]/g, "").replace(",", "."));
 
-      for (const expense of expensesFromCSV) {
-        const parsedDate = new Date(expense.date);
-        if (isNaN(parsedDate.getTime())) {
-          throw new Error(`Invalid date in CSV: ${expense.date}`);
-        }
-
-        const parsedAmount = parseFloat(expense.amount.replace(/[^\d.,]/g, '').replace(',', '.'));
-        if (isNaN(parsedAmount)) {
-          throw new Error(`Invalid amount in CSV: ${expense.amount}`);
-        }
+        if (Number.isNaN(parsedDate.getTime())) throw new Error(`Data inválida: ${row.dueDate}`);
+        if (Number.isNaN(parsedAmount) || parsedAmount < 0)
+          throw new Error(`Valor inválido: ${row.amount}`);
+        if (!row.residentId && !row.shopOwnerId)
+          throw new Error(`Linha sem residentId nem shopOwnerId: ${row.description}`);
 
         await createExpense({
-          description: expense.description,
-          amount: parsedAmount,
-          date: parsedDate.toISOString(),
+          description: row.description,
+          amountCents: Math.round(parsedAmount * 100),
+          dueDate: parsedDate.toISOString(),
+          residentId: row.residentId,
+          shopOwnerId: row.shopOwnerId,
         });
       }
-      
-      fetchData(); // Refresh the expenses list after adding new ones
+      await loadExpenses();
     } catch (err) {
-      console.error("Error processing CSV:", err);
-      setError("Error processing CSV. Please check the date and amount formats.");
+      setError(err instanceof Error ? err.message : "Erro ao processar CSV.");
     }
+
+    e.target.value = "";
   };
 
-  const handleSort = (field: keyof Expense) => {
-    if (field === sortField) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-
-  const totalPages = Math.ceil(filteredExpenses.length / ITEMS_PER_PAGE);
-  const paginatedExpenses = filteredExpenses.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  const SortIcon = ({ field }: { field: SortField }) =>
+    sortField === field ? <span className="ml-1">{sortDir === "asc" ? "↑" : "↓"}</span> : null;
 
   return (
-    <div className="bg-[#ecf0f1] shadow-md rounded-lg p-6">
-      <h1 className="text-2xl font-bold mb-6 text-[#2c3e50]">Despesas</h1>
-      {error && <p className="text-[#e74c3c] mb-4">{error}</p>}
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-text-primary">Despesas</h1>
+        <p className="mt-1 text-sm text-text-secondary">Gerencie as despesas do condomínio</p>
+      </div>
 
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-2 text-[#2c3e50]">Upload de CSV</h2>
+      {error ? (
+        <div className="rounded-md bg-red-50 px-4 py-3 text-sm text-danger">{error}</div>
+      ) : null}
+
+      {/* Add expense form */}
+      <div className="rounded-xl border border-border bg-surface p-6 shadow-card">
+        <h2 className="mb-4 text-base font-semibold text-text-primary">Nova Despesa</h2>
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Select
+              label="Tipo"
+              value={form.description}
+              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              options={descriptionOptions}
+              required
+            />
+            <Input
+              label="Valor (R$)"
+              type="number"
+              step="0.01"
+              min="0.01"
+              placeholder="0,00"
+              value={form.amount}
+              onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
+              required
+            />
+            <Input
+              label="Vencimento"
+              type="date"
+              value={form.dueDate}
+              onChange={(e) => setForm((p) => ({ ...p, dueDate: e.target.value }))}
+              required
+            />
+          </div>
+
+          {/* Link to resident or shop owner */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Select
+              label="Vincular a"
+              value={form.linkType}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, linkType: e.target.value as LinkType, linkId: "" }))
+              }
+              options={[
+                { value: "residentId", label: "Morador" },
+                { value: "shopOwnerId", label: "Lojista" },
+              ]}
+            />
+            <div className="sm:col-span-2">
+              {form.linkType === "residentId" ? (
+                <Select
+                  label="Morador"
+                  value={form.linkId}
+                  onChange={(e) => setForm((p) => ({ ...p, linkId: e.target.value }))}
+                  options={residentOptions}
+                  required
+                />
+              ) : (
+                <Select
+                  label="Lojista"
+                  value={form.linkId}
+                  onChange={(e) => setForm((p) => ({ ...p, linkId: e.target.value }))}
+                  options={shopOwnerOptions}
+                  required
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button type="submit" loading={loading}>
+              Adicionar despesa
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      {/* CSV upload */}
+      <div className="rounded-xl border border-border bg-surface p-6 shadow-card">
+        <h2 className="mb-3 text-base font-semibold text-text-primary">Importar CSV</h2>
+        <p className="mb-3 text-xs text-text-muted">
+          Colunas obrigatórias:{" "}
+          <code className="rounded bg-slate-100 px-1">
+            description, amount, dueDate, residentId | shopOwnerId
+          </code>
+        </p>
         <input
           type="file"
           accept=".csv"
-          onChange={handleFileUpload}
-          className="w-full p-2 border border-[#34495e] rounded text-[#2c3e50]"
+          onChange={handleCSV}
+          className="block w-full text-sm text-text-secondary file:mr-4 file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-accent-hover"
         />
       </div>
 
-      <form onSubmit={handleCreateExpense} className="mb-6">
-        <h2 className="text-xl font-semibold mb-2 text-[#2c3e50]">Nova Despesa</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-[#2c3e50]">Tipo de Despesa:</label>
-            <select
-              name="description"
-              value={newExpense.description}
-              onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-[#34495e] shadow-sm focus:border-[#3498db] focus:ring focus:ring-[#3498db] focus:ring-opacity-50"
-              required
-            >
-              <option value="">Selecione um tipo de despesa</option>
-              {EXPENSE_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-[#2c3e50]">Valor:</label>
-            <input
-              type="number"
-              name="amount"
-              value={newExpense.amount}
-              onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-[#34495e] shadow-sm focus:border-[#3498db] focus:ring focus:ring-[#3498db] focus:ring-opacity-50"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-[#2c3e50]">Data:</label>
-            <input
-              type="date"
-              name="date"
-              value={newExpense.date}
-              onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-[#34495e] shadow-sm focus:border-[#3498db] focus:ring focus:ring-[#3498db] focus:ring-opacity-50"
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            className="mt-4 px-4 py-2 bg-[#3498db] text-white rounded hover:bg-[#2980b9] focus:outline-none focus:ring-2 focus:ring-[#3498db] focus:ring-opacity-50"
-          >
-            Criar
-          </button>
+      {/* Table */}
+      <div className="rounded-xl border border-border bg-surface shadow-card">
+        <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center">
+          <Input
+            placeholder="Pesquisar despesas..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="sm:max-w-xs"
+          />
+          <Select
+            value={filterType}
+            onChange={(e) => {
+              setFilterType(e.target.value);
+              setCurrentPage(1);
+            }}
+            options={filterOptions}
+            className="sm:max-w-48"
+          />
+          <span className="ml-auto text-sm text-text-muted">{filtered.length} registro(s)</span>
         </div>
-      </form>
 
-      <div className="mb-4 flex w-full items-center">
-        <input
-          type="text"
-          placeholder="Pesquisar despesas..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="p-2 border border-[#34495e] rounded mr-2 w-full"
-        />
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          className="p-2 border border-[#34495e] rounded"
-        >
-          <option value="">Todos os tipos</option>
-          {EXPENSE_TYPES.map((type) => (
-            <option key={type} value={type}>{type}</option>
-          ))}
-        </select>
-      </div>
-
-      <h2 className="text-xl font-semibold mb-2 text-[#2c3e50]">Lista de Despesas</h2>
-      {paginatedExpenses.length > 0 ? (
-        <>
-          <table className="w-full mb-4">
-            <thead>
-              <tr className="bg-[#34495e] text-white">
-                <th className="p-2 cursor-pointer" onClick={() => handleSort('description')}>Descrição</th>
-                <th className="p-2 cursor-pointer" onClick={() => handleSort('amount')}>Valor</th>
-                <th className="p-2 cursor-pointer" onClick={() => handleSort('date')}>Data</th>
-                <th className="p-2">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedExpenses.map((expense) => (
-                <tr key={expense.id} className="border-b border-[#34495e]">
-                  <td className="p-2">{expense.description}</td>
-                  <td className="p-2">
-                    {expense.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  </td>
-                  <td className="p-2">{new Date(expense.date).toLocaleDateString('pt-BR')}</td>
-                  <td className="p-2">
-                    <button className="text-[#3498db] hover:underline mr-2">Editar</button>
-                    <button
-                      onClick={() => handleDeleteExpense(expense.id)}
-                      className="text-[#e74c3c] hover:underline"
+        {paginated.length > 0 ? (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-surface-alt text-left text-text-secondary">
+                    <th
+                      className="cursor-pointer px-4 py-3 font-medium hover:text-text-primary"
+                      onClick={() => handleSort("description")}
                     >
-                      Deletar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="flex justify-between items-center">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 bg-[#3498db] text-white rounded disabled:bg-gray-300"
-            >
-              Anterior
-            </button>
-            <span>{currentPage} de {totalPages}</span>
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 bg-[#3498db] text-white rounded disabled:bg-gray-300"
-            >
-              Próxima
-            </button>
-          </div>
-        </>
-      ) : (
-        <p className="text-[#34495e]">Nenhuma despesa encontrada.</p>
-      )}
+                      Descrição <SortIcon field="description" />
+                    </th>
+                    <th
+                      className="cursor-pointer px-4 py-3 font-medium hover:text-text-primary"
+                      onClick={() => handleSort("amountCents")}
+                    >
+                      Valor <SortIcon field="amountCents" />
+                    </th>
+                    <th
+                      className="cursor-pointer px-4 py-3 font-medium hover:text-text-primary"
+                      onClick={() => handleSort("dueDate")}
+                    >
+                      Vencimento <SortIcon field="dueDate" />
+                    </th>
+                    <th className="px-4 py-3 font-medium">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {paginated.map((expense) => (
+                    <tr key={expense.id} className="hover:bg-surface-alt">
+                      <td className="px-4 py-3 text-text-primary">{expense.description}</td>
+                      <td className="px-4 py-3 text-text-primary">{fromCents(expense.amountCents)}</td>
+                      <td className="px-4 py-3 text-text-secondary">
+                        {new Date(expense.dueDate).toLocaleDateString("pt-BR")}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-3">
+                          <button className="text-accent hover:underline">Editar</button>
+                          <button
+                            onClick={() => handleDelete(expense.id)}
+                            className="text-danger hover:underline"
+                          >
+                            Deletar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between border-t border-border px-4 py-3">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                Anterior
+              </Button>
+              <span className="text-sm text-text-secondary">
+                {currentPage} de {totalPages}
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                Próxima
+              </Button>
+            </div>
+          </>
+        ) : (
+          <p className="px-4 py-8 text-center text-text-secondary">Nenhuma despesa encontrada.</p>
+        )}
+      </div>
     </div>
   );
-};
+}
 
 export default ExpensesPage;

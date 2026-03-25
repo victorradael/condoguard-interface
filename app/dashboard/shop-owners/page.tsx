@@ -1,27 +1,27 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { fetchResidents } from "@/lib/api";
-import type { Resident } from "@/types";
+import { fetchShopOwners } from "@/lib/api";
+import type { ShopOwner } from "@/types";
 import { useEffect, useState } from "react";
 
-function ResidentsPage() {
-  const [residents, setResidents] = useState<Resident[]>([]);
+function ShopOwnersPage() {
+  const [shopOwners, setShopOwners] = useState<ShopOwner[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchResidents()
-      .then(({ data }) => setResidents(Array.isArray(data) ? data : []))
-      .catch(() => setError("Erro ao buscar moradores."))
+    fetchShopOwners()
+      .then(({ data }) => setShopOwners(Array.isArray(data) ? data : []))
+      .catch(() => setError("Erro ao buscar lojistas."))
       .finally(() => setLoading(false));
   }, []);
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-text-primary">Moradores</h1>
-        <p className="mt-1 text-sm text-text-secondary">Lista de moradores do condomínio</p>
+        <h1 className="text-2xl font-bold text-text-primary">Lojistas</h1>
+        <p className="mt-1 text-sm text-text-secondary">Lista de lojistas do condomínio</p>
       </div>
 
       {error ? (
@@ -30,14 +30,14 @@ function ResidentsPage() {
 
       {loading ? (
         <div className="py-12 text-center text-text-secondary">Carregando...</div>
-      ) : residents.length > 0 ? (
+      ) : shopOwners.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {residents.map((resident) => (
-            <Card key={resident.id}>
+          {shopOwners.map((owner) => (
+            <Card key={owner.id}>
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="font-semibold text-text-primary">{resident.name}</p>
-                  <p className="mt-0.5 text-sm text-text-secondary">{resident.address}</p>
+                  <p className="font-semibold text-text-primary">{owner.name}</p>
+                  <p className="mt-0.5 text-sm text-text-secondary">{owner.address}</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
                   <button className="text-sm text-accent hover:underline">Editar</button>
@@ -49,11 +49,11 @@ function ResidentsPage() {
         </div>
       ) : (
         <Card>
-          <p className="text-center text-text-secondary">Nenhum morador encontrado.</p>
+          <p className="text-center text-text-secondary">Nenhum lojista encontrado.</p>
         </Card>
       )}
     </div>
   );
 }
 
-export default ResidentsPage;
+export default ShopOwnersPage;

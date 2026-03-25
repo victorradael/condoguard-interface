@@ -1,22 +1,20 @@
 import type { Metadata } from "next";
 import "./globals.css";
-
-import { ReactNode } from 'react';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from "@/contexts/auth-context";
 
 export const metadata: Metadata = {
-  title: 'CondoGuard',
-  description: 'Aplicação de gerenciamento de despesas e comunicação para condomínios',
-  icons: 'https://raw.githubusercontent.com/victorradael/condoguard/eec7d267e82e933f725b617613bf306b9d318125/assets/condoguard-icon.svg',
+  title: "CondoGuard",
+  description: "Gerenciamento de despesas e comunicação para condomínios",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="bg-gray-100 text-gray-900">
+    <html lang="pt-BR">
+      <body>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
 }
 
+export default RootLayout;
