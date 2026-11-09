@@ -44,6 +44,31 @@ export const csvExpenseSchema = z.object({
   date: z.string().min(1),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("E-mail inválido"),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "As senhas não coincidem",
+    path: ["confirmPassword"],
+  });
+
+export const totpCodeSchema = z.object({
+  code: z
+    .string()
+    .min(6, "Código inválido")
+    .max(8, "Código inválido")
+    .regex(/^\d+$/, "Código deve conter apenas dígitos"),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type ExpenseInput = z.infer<typeof expenseSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type TotpCodeInput = z.infer<typeof totpCodeSchema>;
