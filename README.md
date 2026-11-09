@@ -59,7 +59,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8080
 
 > **Nota**: Certifique-se de que o backend está rodando na URL e porta configuradas. Modifique `NEXT_PUBLIC_API_URL` se necessário.
 >
-> **`API_INTERNAL_URL`** (opcional, só servidor, lida em tempo de execução): URL da API usada pelo `middleware.ts` e por qualquer `fetch` feito no servidor. É obrigatória quando `NEXT_PUBLIC_API_URL` é relativa (ex.: `/api` atrás do Caddy no `make up`, onde vale `API_INTERNAL_URL=http://api:8080`), pois uma URL relativa não resolve no servidor. Se não definida, usa `NEXT_PUBLIC_API_URL` quando absoluta.
+> **`API_INTERNAL_URL`** (opcional, só servidor, lida em tempo de execução): URL da API usada pelo `proxy.ts` e por qualquer `fetch` feito no servidor. É obrigatória quando `NEXT_PUBLIC_API_URL` é relativa (ex.: `/api` atrás do Caddy no `make up`, onde vale `API_INTERNAL_URL=http://api:8080`), pois uma URL relativa não resolve no servidor. Se não definida, usa `NEXT_PUBLIC_API_URL` quando absoluta.
 
 #### Passo 4: Executar o Projeto
 
@@ -139,7 +139,7 @@ Se tiver alguma dúvida ou sugestão, entre em contato com [radael.engenharia@gm
 ## Sessão e contrato com a API
 
 - Sessão por cookies httpOnly (`cg_access`, `cg_refresh`) gravados pela API; o web não guarda token (nem em `localStorage`). Login: `POST /auth/login` com `{ email, password, useCookies: true }`. Em 401 o cliente chama `POST /auth/refresh` uma vez e repete a requisição; se falhar, volta ao `/login`.
-- `middleware.ts` protege `/dashboard/*` (consulta `GET /users/me`) e restringe usuários, moradores e lojistas a `ROLE_ADMIN`.
-- Em produção, web e API precisam estar no mesmo site (domínio registrável) e `COOKIE_DOMAIN` da API deve cobrir o host do web, para o middleware enxergar `cg_access`. A origem do web precisa estar em `CORS_ALLOWED_ORIGINS` (CSRF).
+- `proxy.ts` protege `/dashboard/*` (consulta `GET /users/me`) e restringe usuários, moradores e lojistas a `ROLE_ADMIN`.
+- Em produção, web e API precisam estar no mesmo site (domínio registrável) e `COOKIE_DOMAIN` da API deve cobrir o host do web, para o proxy enxergar `cg_access`. A origem do web precisa estar em `CORS_ALLOWED_ORIGINS` (CSRF).
 - Tipos gerados do OpenAPI: na API, `go run ./cmd/openapi > openapi.json`; copie para `web/openapi.json` e rode `npm run gen:api` (gera `types/api.d.ts`).
 - Scripts: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.

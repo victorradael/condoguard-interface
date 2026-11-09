@@ -2,7 +2,7 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080
 
 const isAbsolute = (url: string) => /^https?:\/\//i.test(url);
 
-// URL da API para fetch feito no servidor (middleware, RSC). Lida em tempo de
+// URL da API para fetch feito no servidor (proxy, RSC). Lida em tempo de
 // execução: API_INTERNAL_URL (só servidor, ex.: http://api:8080 no compose) e,
 // na falta dela, NEXT_PUBLIC_API_URL quando absoluta. Uma URL relativa (/api)
 // só resolve no navegador, então não serve aqui.
