@@ -1,4 +1,4 @@
-import { API_URL } from "@/lib/api-url";
+import { serverApiUrl } from "@/lib/api-url";
 import { ACCESS_COOKIE, hasAdminRole, isAdminPath } from "@/lib/session";
 import type { User } from "@/types";
 import { type NextRequest, NextResponse } from "next/server";
@@ -20,7 +20,7 @@ export async function middleware(req: NextRequest) {
 
   let me: User | null = null;
   try {
-    const res = await fetch(`${API_URL}/users/me`, {
+    const res = await fetch(`${serverApiUrl()}/users/me`, {
       headers: { cookie: `${ACCESS_COOKIE}=${access}` },
       cache: "no-store",
     });

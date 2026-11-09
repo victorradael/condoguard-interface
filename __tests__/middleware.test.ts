@@ -49,6 +49,30 @@ describe("middleware", () => {
     expect(init.headers.cookie).toBe("cg_access=abc");
   });
 
+  it("NEXT_PUBLIC_API_URL relativa + API_INTERNAL_URL → usa a URL interna", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "/api");
+    vi.stubEnv("API_INTERNAL_URL", "http://api:8080/");
+    const { middleware: mw } = await import("@/middleware");
+    mockMe(200, me(["ROLE_USER"]));
+    const res = await mw(req("/dashboard", "cg_access=abc"));
+    expect(res.headers.get("x-middleware-next")).toBe("1");
+    const [url] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(String(url)).toBe("http://api:8080/users/me");
+    vi.unstubAllEnvs();
+  });
+
+  it("NEXT_PUBLIC_API_URL relativa sem API_INTERNAL_URL → login (nega)", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "/api");
+    vi.stubEnv("API_INTERNAL_URL", "");
+    const { middleware: mw } = await import("@/middleware");
+    mockMe(200, me(["ROLE_USER"]));
+    const res = await mw(req("/dashboard", "cg_access=abc"));
+    expect(new URL(res.headers.get("location") as string).pathname).toBe("/login");
+    vi.unstubAllEnvs();
+  });
+
   it("ROLE_USER acessa o dashboard, mas não a área de admin", async () => {
     mockMe(200, me(["ROLE_USER"]));
     const ok = await middleware(req("/dashboard/expenses", "cg_access=abc"));
