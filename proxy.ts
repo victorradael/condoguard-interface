@@ -14,7 +14,7 @@ const toLogin = (req: NextRequest) => {
 // Quem está logado vem de GET /users/me com o cookie cg_access da sessão.
 // Sem cookie (ou token expirado/revogado) → login; a tela de login tenta um
 // POST /auth/refresh silencioso (o cg_refresh só viaja para /auth) antes de pedir senha.
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const access = req.cookies.get(ACCESS_COOKIE)?.value;
   if (!access) return toLogin(req);
 
