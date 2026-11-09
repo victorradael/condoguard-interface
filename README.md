@@ -58,6 +58,8 @@ NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
 
 > **Nota**: Certifique-se de que o backend está rodando na URL e porta configuradas. Modifique `NEXT_PUBLIC_API_URL` se necessário.
+>
+> **`API_INTERNAL_URL`** (opcional, só servidor, lida em tempo de execução): URL da API usada pelo `middleware.ts` e por qualquer `fetch` feito no servidor. É obrigatória quando `NEXT_PUBLIC_API_URL` é relativa (ex.: `/api` atrás do Caddy no `make up`, onde vale `API_INTERNAL_URL=http://api:8080`), pois uma URL relativa não resolve no servidor. Se não definida, usa `NEXT_PUBLIC_API_URL` quando absoluta.
 
 #### Passo 4: Executar o Projeto
 
