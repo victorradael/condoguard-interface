@@ -3,6 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { register } from "@/lib/api";
+import { apiErrorMessage } from "@/lib/errors";
+import { registerSchema } from "@/lib/validations";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -26,8 +28,9 @@ function CreateAccountPage() {
     e.preventDefault();
     setError(null);
 
-    if (form.password !== form.confirmPassword) {
-      setError("As senhas não coincidem.");
+    const parsed = registerSchema.safeParse(form);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0].message);
       return;
     }
 
@@ -35,8 +38,8 @@ function CreateAccountPage() {
     try {
       await register(form.username, form.email, form.password);
       router.push("/login");
-    } catch {
-      setError("Erro ao criar conta. Tente novamente.");
+    } catch (err) {
+      setError(apiErrorMessage(err, "Erro ao criar conta. Tente novamente."));
     } finally {
       setLoading(false);
     }
@@ -76,7 +79,8 @@ function CreateAccountPage() {
           name="password"
           label="Senha"
           type="password"
-          placeholder="••••••••"
+          placeholder="Mínimo 10 caracteres, com letras e números"
+          autoComplete="new-password"
           value={form.password}
           onChange={handleChange}
           required

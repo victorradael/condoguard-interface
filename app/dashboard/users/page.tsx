@@ -1,26 +1,30 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import { Pager } from "@/components/ui/pager";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { deleteUser, fetchUsers } from "@/lib/api";
-import type { User } from "@/types";
-import { useEffect, useState } from "react";
 
 function UsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchUsers()
-      .then(({ data }) => setUsers(Array.isArray(data) ? data : []))
-      .catch(() => setError("Erro ao buscar usuários."))
-      .finally(() => setLoading(false));
-  }, []);
+  const {
+    items: users,
+    page,
+    setPage,
+    total,
+    pageSize,
+    error,
+    setError,
+    loading,
+    reload,
+  } = usePagedList(fetchUsers, "Erro ao buscar usuários.");
 
   const handleDelete = async (id: string) => {
     try {
       await deleteUser(id);
-      setUsers((prev) => prev.filter((u) => u.id !== id));
+      // volta uma página se a última ficou vazia
+      const target = users.length === 1 && page > 1 ? page - 1 : page;
+      setPage(target);
+      await reload(target);
     } catch {
       setError("Erro ao deletar usuário.");
     }
@@ -49,8 +53,11 @@ function UsersPage() {
                   <p className="mt-0.5 text-sm text-text-secondary">{user.email}</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <button className="text-sm text-accent hover:underline">Editar</button>
+                  <button type="button" className="text-sm text-accent hover:underline">
+                    Editar
+                  </button>
                   <button
+                    type="button"
                     onClick={() => handleDelete(user.id)}
                     className="text-sm text-danger hover:underline"
                   >
@@ -66,6 +73,9 @@ function UsersPage() {
           <p className="text-center text-text-secondary">Nenhum usuário encontrado.</p>
         </Card>
       )}
+      {total > pageSize ? (
+        <Pager page={page} pageSize={pageSize} total={total} onChange={setPage} />
+      ) : null}
     </div>
   );
 }

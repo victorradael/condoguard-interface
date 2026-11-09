@@ -1,22 +1,19 @@
 "use client";
 
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { fetchExpenses } from "@/lib/api";
+import { fetchAll, fetchExpenses } from "@/lib/api";
 import type { Expense } from "@/types";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
 const ExpensesByCategoryChart = dynamic(
   () =>
-    import("@/components/charts/expenses-by-category-chart").then(
-      (m) => m.ExpensesByCategoryChart
-    ),
+    import("@/components/charts/expenses-by-category-chart").then((m) => m.ExpensesByCategoryChart),
   { ssr: false, loading: () => <div className="h-48 animate-pulse rounded bg-slate-100" /> }
 );
 
 const ExpensesByDateChart = dynamic(
-  () =>
-    import("@/components/charts/expenses-by-date-chart").then((m) => m.ExpensesByDateChart),
+  () => import("@/components/charts/expenses-by-date-chart").then((m) => m.ExpensesByDateChart),
   { ssr: false, loading: () => <div className="h-48 animate-pulse rounded bg-slate-100" /> }
 );
 
@@ -26,8 +23,8 @@ function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchExpenses()
-      .then(({ data }) => setExpenses(Array.isArray(data) ? data : []))
+    fetchAll(fetchExpenses)
+      .then(setExpenses)
       .catch(() => setError("Erro ao buscar despesas."))
       .finally(() => setLoading(false));
   }, []);

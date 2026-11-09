@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { NavLink } from "./nav-link";
 
 const HomeIcon = () => (
-  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+  <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -16,7 +16,7 @@ const HomeIcon = () => (
 );
 
 const UsersIcon = () => (
-  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+  <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -26,7 +26,7 @@ const UsersIcon = () => (
 );
 
 const BuildingIcon = () => (
-  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+  <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -36,7 +36,7 @@ const BuildingIcon = () => (
 );
 
 const ShopIcon = () => (
-  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+  <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -46,7 +46,7 @@ const ShopIcon = () => (
 );
 
 const BellIcon = () => (
-  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+  <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -56,7 +56,7 @@ const BellIcon = () => (
 );
 
 const WalletIcon = () => (
-  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+  <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -66,7 +66,7 @@ const WalletIcon = () => (
 );
 
 const LogoutIcon = () => (
-  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+  <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -76,11 +76,11 @@ const LogoutIcon = () => (
 );
 
 export function Sidebar() {
-  const { isAdmin, clearAuth } = useAuth();
+  const { isAdmin, logout } = useAuth();
   const router = useRouter();
 
-  const handleLogout = () => {
-    clearAuth();
+  const handleLogout = async () => {
+    await logout();
     router.push("/login");
   };
 
@@ -88,13 +88,7 @@ export function Sidebar() {
     <aside className="flex h-screen w-64 shrink-0 flex-col bg-sidebar">
       {/* Brand */}
       <div className="flex items-center justify-center px-4 py-5">
-        <Image
-          src="/logo.svg"
-          alt="CondoGuard"
-          width={140}
-          height={56}
-          priority
-        />
+        <Image src="/logo.svg" alt="CondoGuard" width={140} height={56} priority />
       </div>
 
       {/* Navigation */}
@@ -133,6 +127,7 @@ export function Sidebar() {
       {/* Logout */}
       <div className="border-t border-white/10 p-3">
         <button
+          type="button"
           onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-danger hover:text-white"
         >

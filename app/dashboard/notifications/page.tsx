@@ -1,21 +1,31 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { fetchNotifications } from "@/lib/api";
-import type { Notification } from "@/types";
-import { useEffect, useState } from "react";
+import { Pager } from "@/components/ui/pager";
+import { usePagedList } from "@/hooks/use-paged-list";
+import { fetchNotifications, markNotificationRead } from "@/lib/api";
 
 function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const {
+    items: notifications,
+    page,
+    setPage,
+    total,
+    pageSize,
+    error,
+    setError,
+    loading,
+    reload,
+  } = usePagedList(fetchNotifications, "Erro ao buscar notificações.");
 
-  useEffect(() => {
-    fetchNotifications()
-      .then(({ data }) => setNotifications(Array.isArray(data) ? data : []))
-      .catch(() => setError("Erro ao buscar notificações."))
-      .finally(() => setLoading(false));
-  }, []);
+  const handleRead = async (id: string) => {
+    try {
+      await markNotificationRead(id);
+      await reload();
+    } catch {
+      setError("Erro ao marcar notificação como lida.");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -36,8 +46,9 @@ function NotificationsPage() {
             <Card key={n.id} className="hover:shadow-lg transition-shadow">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="font-semibold text-text-primary">{n.title}</p>
-                  <p className="mt-1 text-sm text-text-secondary">{n.message}</p>
+                  <p className={n.read ? "text-text-secondary" : "font-semibold text-text-primary"}>
+                    {n.message}
+                  </p>
                   {n.createdAt ? (
                     <p className="mt-2 text-xs text-text-muted">
                       {new Date(n.createdAt).toLocaleDateString("pt-BR")}
@@ -45,8 +56,17 @@ function NotificationsPage() {
                   ) : null}
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <button className="text-sm text-accent hover:underline">Editar</button>
-                  <button className="text-sm text-danger hover:underline">Deletar</button>
+                  {n.read ? (
+                    <span className="text-xs text-text-muted">Lida</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleRead(n.id)}
+                      className="text-sm text-accent hover:underline"
+                    >
+                      Marcar como lida
+                    </button>
+                  )}
                 </div>
               </div>
             </Card>
@@ -57,6 +77,9 @@ function NotificationsPage() {
           <p className="text-center text-text-secondary">Nenhuma notificação encontrada.</p>
         </Card>
       )}
+      {total > pageSize ? (
+        <Pager page={page} pageSize={pageSize} total={total} onChange={setPage} />
+      ) : null}
     </div>
   );
 }

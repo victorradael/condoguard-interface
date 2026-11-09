@@ -1,45 +1,54 @@
 "use client";
 
-import type { UserRole } from "@/types";
-import { createContext, useContext, useEffect, useState } from "react";
+import { logout as apiLogout, fetchMe } from "@/lib/api";
+import { hasAdminRole } from "@/lib/session";
+import type { User } from "@/types";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 interface AuthContextValue {
-  token: string | null;
-  role: UserRole | null;
+  user: User | null;
+  loading: boolean;
   isAdmin: boolean;
-  setAuth: (token: string, role: UserRole) => void;
-  clearAuth: () => void;
+  reload: () => Promise<User | null>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
-  const [role, setRole] = useState<UserRole | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    const storedRole = localStorage.getItem("role") as UserRole | null;
-    if (storedToken) setToken(storedToken);
-    if (storedRole) setRole(storedRole);
+  // A sessão é o cookie httpOnly; quem está logado vem de GET /users/me.
+  const reload = useCallback(async () => {
+    try {
+      const { data } = await fetchMe();
+      setUser(data);
+      return data;
+    } catch {
+      setUser(null);
+      return null;
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const setAuth = (newToken: string, newRole: UserRole) => {
-    localStorage.setItem("token", newToken);
-    localStorage.setItem("role", newRole);
-    setToken(newToken);
-    setRole(newRole);
-  };
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
-  const clearAuth = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    setToken(null);
-    setRole(null);
-  };
+  const logout = useCallback(async () => {
+    try {
+      await apiLogout();
+    } finally {
+      setUser(null);
+    }
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ token, role, isAdmin: role === "admin", setAuth, clearAuth }}>
+    <AuthContext.Provider
+      value={{ user, loading, isAdmin: hasAdminRole(user?.roles), reload, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );
