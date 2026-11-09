@@ -1,21 +1,20 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import { Pager } from "@/components/ui/pager";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { fetchResidents } from "@/lib/api";
-import type { Resident } from "@/types";
-import { useEffect, useState } from "react";
 
 function ResidentsPage() {
-  const [residents, setResidents] = useState<Resident[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchResidents()
-      .then(({ data }) => setResidents(Array.isArray(data) ? data : []))
-      .catch(() => setError("Erro ao buscar moradores."))
-      .finally(() => setLoading(false));
-  }, []);
+  const {
+    items: residents,
+    page,
+    setPage,
+    total,
+    pageSize,
+    error,
+    loading,
+  } = usePagedList(fetchResidents, "Erro ao buscar moradores.");
 
   return (
     <div className="space-y-6">
@@ -36,12 +35,19 @@ function ResidentsPage() {
             <Card key={resident.id}>
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="font-semibold text-text-primary">{resident.name}</p>
-                  <p className="mt-0.5 text-sm text-text-secondary">{resident.address}</p>
+                  <p className="font-semibold text-text-primary">Unidade {resident.unitNumber}</p>
+                  <p className="mt-0.5 text-sm text-text-secondary">
+                    {resident.floor ? `${resident.floor}º andar · ` : ""}Bloco{" "}
+                    {resident.condominiumId}
+                  </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <button className="text-sm text-accent hover:underline">Editar</button>
-                  <button className="text-sm text-danger hover:underline">Deletar</button>
+                  <button type="button" className="text-sm text-accent hover:underline">
+                    Editar
+                  </button>
+                  <button type="button" className="text-sm text-danger hover:underline">
+                    Deletar
+                  </button>
                 </div>
               </div>
             </Card>
@@ -52,6 +58,9 @@ function ResidentsPage() {
           <p className="text-center text-text-secondary">Nenhum morador encontrado.</p>
         </Card>
       )}
+      {total > pageSize ? (
+        <Pager page={page} pageSize={pageSize} total={total} onChange={setPage} />
+      ) : null}
     </div>
   );
 }

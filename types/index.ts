@@ -1,43 +1,20 @@
-export type UserRole = "admin" | "user";
+import type { components } from "./api";
 
-export interface User {
-  id: string;
-  username: string;
-  email: string;
-  role?: UserRole;
-}
+type Schemas = components["schemas"];
 
-export interface Resident {
-  id: string;
-  name: string;
-  address: string;
-}
+export type UserRole = Schemas["User"]["roles"][number];
+export type User = Schemas["User"];
+export type Resident = Schemas["Resident"];
+export type ShopOwner = Schemas["ShopOwner"];
+export type Expense = Schemas["Expense"];
+export type Notification = Schemas["Notification"];
+export type CreateExpense = Schemas["CreateExpenseRequest"];
 
-export interface ShopOwner {
-  id: string;
-  name: string;
-  address: string;
-}
-
-export interface Expense {
-  id: string;
-  description: string;
-  amountCents: number;
-  dueDate: string;
-  residentId?: string;
-  shopOwnerId?: string;
-}
-
-export interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  createdAt?: string;
-}
-
-export interface AuthPayload {
-  token: string;
-  role: UserRole;
+export interface Page<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
 }
 
 export type ExpenseDescription =

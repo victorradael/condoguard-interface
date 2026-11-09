@@ -1,0 +1,2809 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "CondoGuard API",
+    "description": "REST API para gestão financeira e administrativa de condomínios.\n\n**Autenticação.** O app envia o access token em `Authorization: Bearer`; o web usa os cookies httpOnly `cg_access`/`cg_refresh` (login com `useCookies: true`). Com cookie, requisições que alteram dados precisam vir de uma origem permitida (cabeçalho `Origin`).\n\n**Papéis.** `ROLE_ADMIN` administra o condomínio e vê tudo nele. `ROLE_USER` (morador/lojista) só lê os registros das próprias unidades e lojas; o que ele não pode ver responde 404. Nada de outro condomínio é visível.\n\n**Listas** são paginadas: `?page=1\u0026pageSize=20` (máx. 100) → `{items, page, pageSize, total}`.",
+    "version": "1.1.0",
+    "license": {
+      "name": "GNU GPL v3.0",
+      "url": "https://www.gnu.org/licenses/gpl-3.0.html"
+    }
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current server"
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Entrar (e-mail e senha)",
+        "description": "Abre uma sessão. Com useCookies=true define os cookies httpOnly cg_access e cg_refresh.",
+        "operationId": "authLogin",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login bem-sucedido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPair"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Corpo inválido: precisa ser um único objeto JSON de até 64 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credenciais inválidas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas tentativas com falha (por e-mail e IP, ou só por IP); tente após o tempo do cabeçalho Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Sair",
+        "description": "Revoga a sessão do refresh token (corpo ou cookie) e apaga os cookies. Sempre 204.",
+        "operationId": "authLogout",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "403": {
+            "description": "Cookie enviado de uma origem não permitida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Renovar a sessão (refresh rotativo)",
+        "description": "Troca o refresh token por um par novo; o antigo deixa de valer. Reusar um refresh já trocado revoga a sessão inteira. Sem refreshToken no corpo, usa o cookie cg_refresh (exige Origin permitido).",
+        "operationId": "authRefresh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Novo par",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPair"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Refresh inválido, expirado ou revogado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Cookie enviado de uma origem não permitida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Cadastrar morador",
+        "description": "Cria sempre um ROLE_USER. Administradores são criados por um admin em POST /users.",
+        "operationId": "authRegister",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuário registrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "JSON inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "E-mail já cadastrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corpo maior que 1 MiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos ou senha fora da política",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/expenses": {
+      "get": {
+        "tags": ["Expenses"],
+        "summary": "Listar Expenses",
+        "description": "Admin: todos do condomínio. Usuário: só os seus.",
+        "operationId": "listExpenses",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Página (começa em 1)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Itens por página (1 a 100, padrão 20)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Vencimento a partir de (RFC3339)",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Vencimento até (RFC3339)",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de Expenses",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpensePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parâmetro inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": ["Expenses"],
+        "summary": "Criar (ROLE_ADMIN)",
+        "description": "amountCents \u003e= 0. Exige residentId ou shopOwnerId.",
+        "operationId": "createExpense",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExpenseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Expense"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/expenses/{id}": {
+      "delete": {
+        "tags": ["Expenses"],
+        "summary": "Remover (ROLE_ADMIN)",
+        "operationId": "deleteExpense",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID do recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Despesa não encontrada(o), ou de outro usuário/condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "get": {
+        "tags": ["Expenses"],
+        "summary": "Obter por ID",
+        "operationId": "getExpenseByID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID do recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Expense"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Despesa não encontrada(o), ou de outro usuário/condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": ["Expenses"],
+        "summary": "Atualizar (ROLE_ADMIN)",
+        "operationId": "updateExpense",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID do recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExpenseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Atualizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Expense"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Despesa não encontrada(o), ou de outro usuário/condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Health check",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "Servidor disponível",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Listar Notifications",
+        "description": "Admin: todos do condomínio. Usuário: só os seus.",
+        "operationId": "listNotifications",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Página (começa em 1)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Itens por página (1 a 100, padrão 20)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de Notifications",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parâmetro inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "Criar (ROLE_ADMIN)",
+        "description": "Exige ao menos um destinatário. createdById é o usuário autenticado. Usuários só veem as notificações endereçadas às suas unidades e lojas.",
+        "operationId": "createNotification",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNotificationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notification"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/notifications/{id}": {
+      "delete": {
+        "tags": ["Notifications"],
+        "summary": "Remover (ROLE_ADMIN)",
+        "operationId": "deleteNotification",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID do recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Notificação não encontrada(o), ou de outro usuário/condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Obter por ID",
+        "operationId": "getNotificationByID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID do recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notification"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Notificação não encontrada(o), ou de outro usuário/condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": ["Notifications"],
+        "summary": "Atualizar (ROLE_ADMIN)",
+        "operationId": "updateNotification",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID do recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNotificationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Atualizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notification"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Notificação não encontrada(o), ou de outro usuário/condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/notifications/{id}/read": {
+      "put": {
+        "tags": ["Notifications"],
+        "summary": "Marcar como lida (para mim)",
+        "description": "A leitura é por destinatário. Idempotente: chamar de novo não altera o readAt.",
+        "operationId": "markNotificationAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID do recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notificação com read=true para o usuário autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notification"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Notificação não encontrada, ou não endereçada a você",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/residents": {
+      "get": {
+        "tags": ["Residents"],
+        "summary": "Listar Residents",
+        "description": "Admin: todos do condomínio. Usuário: só os seus.",
+        "operationId": "listResidents",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Página (começa em 1)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Itens por página (1 a 100, padrão 20)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de Residents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResidentPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parâmetro inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": ["Residents"],
+        "summary": "Criar (ROLE_ADMIN)",
+        "description": "unitNumber deve ser único dentro do mesmo condominiumId.",
+        "operationId": "createResident",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateResidentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resident"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Número de unidade já existe neste condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/residents/{id}": {
+      "delete": {
+        "tags": ["Residents"],
+        "summary": "Remover (ROLE_ADMIN)",
+        "operationId": "deleteResident",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID do recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Residência não encontrada(o), ou de outro usuário/condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "get": {
+        "tags": ["Residents"],
+        "summary": "Obter por ID",
+        "operationId": "getResidentByID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID do recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resident"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Residência não encontrada(o), ou de outro usuário/condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": ["Residents"],
+        "summary": "Atualizar (ROLE_ADMIN)",
+        "operationId": "updateResident",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID do recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateResidentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Atualizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resident"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Residência não encontrada(o), ou de outro usuário/condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Número de unidade já existe neste condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/shop-owners": {
+      "get": {
+        "tags": ["ShopOwners"],
+        "summary": "Listar ShopOwners",
+        "description": "Admin: todos do condomínio. Usuário: só os seus.",
+        "operationId": "listShopOwners",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Página (começa em 1)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Itens por página (1 a 100, padrão 20)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de ShopOwners",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopOwnerPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parâmetro inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": ["ShopOwners"],
+        "summary": "Criar (ROLE_ADMIN)",
+        "description": "CNPJ é validado (dígito verificador) e normalizado para XX.XXX.XXX/XXXX-XX. /shopOwners continua aceito como sinônimo de /shop-owners.",
+        "operationId": "createShopOwner",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShopOwnerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopOwner"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CNPJ já cadastrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/shop-owners/{id}": {
+      "delete": {
+        "tags": ["ShopOwners"],
+        "summary": "Remover (ROLE_ADMIN)",
+        "operationId": "deleteShopOwner",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID do recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Loja não encontrada(o), ou de outro usuário/condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "get": {
+        "tags": ["ShopOwners"],
+        "summary": "Obter por ID",
+        "operationId": "getShopOwnerByID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID do recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopOwner"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Loja não encontrada(o), ou de outro usuário/condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": ["ShopOwners"],
+        "summary": "Atualizar (ROLE_ADMIN)",
+        "operationId": "updateShopOwner",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID do recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShopOwnerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Atualizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopOwner"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Loja não encontrada(o), ou de outro usuário/condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CNPJ já cadastrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/users": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Listar usuários (ROLE_ADMIN)",
+        "operationId": "listUsers",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Página (começa em 1)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Itens por página (1 a 100, padrão 20)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de Users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parâmetro inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": ["Users"],
+        "summary": "Criar (ROLE_ADMIN)",
+        "operationId": "createUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "E-mail já cadastrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/users/me": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Minha conta",
+        "description": "Disponível para qualquer usuário autenticado.",
+        "operationId": "getMe",
+        "responses": {
+          "200": {
+            "description": "Usuário autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/users/{id}": {
+      "delete": {
+        "tags": ["Users"],
+        "summary": "Remover (ROLE_ADMIN)",
+        "operationId": "deleteUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID do recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuário não encontrada(o), ou de outro usuário/condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "get": {
+        "tags": ["Users"],
+        "summary": "Obter usuário por ID (ROLE_ADMIN)",
+        "operationId": "getUserByID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID do recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuário não encontrada(o), ou de outro usuário/condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": ["Users"],
+        "summary": "Atualizar (ROLE_ADMIN)",
+        "operationId": "updateUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID do recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Atualizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ROLE_ADMIN necessário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuário não encontrada(o), ou de outro usuário/condomínio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "E-mail já cadastrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateExpenseRequest": {
+        "type": "object",
+        "description": "Exige residentId ou shopOwnerId (ao menos um).",
+        "properties": {
+          "amountCents": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Valor em centavos (\u003e= 0)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Descrição da despesa"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data de vencimento (RFC3339)"
+          },
+          "residentId": {
+            "type": "string",
+            "description": "ID da residência (opcional)"
+          },
+          "shopOwnerId": {
+            "type": "string",
+            "description": "ID da loja (opcional)"
+          }
+        },
+        "required": ["description", "amountCents", "dueDate"]
+      },
+      "CreateNotificationRequest": {
+        "type": "object",
+        "description": "Exige ao menos um destinatário (residentIds ou shopOwnerIds). O autor é o usuário autenticado.",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Conteúdo da mensagem"
+          },
+          "residentIds": {
+            "type": "array",
+            "description": "IDs das residências destinatárias",
+            "items": {
+              "type": "string"
+            }
+          },
+          "shopOwnerIds": {
+            "type": "array",
+            "description": "IDs das lojas destinatárias",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["message"]
+      },
+      "CreateResidentRequest": {
+        "type": "object",
+        "properties": {
+          "condominiumId": {
+            "type": "string",
+            "description": "Bloco/condomínio"
+          },
+          "floor": {
+            "type": "integer",
+            "description": "Andar"
+          },
+          "ownerId": {
+            "type": "string",
+            "description": "ID do proprietário"
+          },
+          "unitNumber": {
+            "type": "string",
+            "description": "Número da unidade"
+          }
+        },
+        "required": ["unitNumber", "condominiumId", "ownerId"]
+      },
+      "CreateShopOwnerRequest": {
+        "type": "object",
+        "properties": {
+          "cnpj": {
+            "type": "string",
+            "description": "CNPJ — raw (14 dígitos) ou formatado; validado pelo servidor"
+          },
+          "floor": {
+            "type": "integer",
+            "description": "Andar"
+          },
+          "ownerId": {
+            "type": "string",
+            "description": "ID do responsável"
+          },
+          "shopName": {
+            "type": "string",
+            "description": "Nome da loja"
+          }
+        },
+        "required": ["shopName", "cnpj", "ownerId"]
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "E-mail"
+          },
+          "password": {
+            "type": "string",
+            "description": "Senha: 10+ caracteres, até 72 bytes, com letras e números; não pode conter o e-mail ou o username",
+            "minLength": 10
+          },
+          "roles": {
+            "type": "array",
+            "description": "Papéis",
+            "items": {
+              "type": "string",
+              "enum": ["ROLE_USER", "ROLE_ADMIN"]
+            }
+          },
+          "username": {
+            "type": "string",
+            "description": "Nome de exibição"
+          }
+        },
+        "required": ["username", "email", "password"]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Mensagem de erro"
+          }
+        },
+        "required": ["error"]
+      },
+      "Expense": {
+        "type": "object",
+        "properties": {
+          "amountCents": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Valor em centavos (inteiro, \u003e= 0)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Descrição"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data de vencimento (RFC3339 UTC)"
+          },
+          "id": {
+            "type": "string",
+            "description": "ID único da despesa"
+          },
+          "residentId": {
+            "type": "string",
+            "description": "ID da residência vinculada; \"\" se for de loja"
+          },
+          "shopOwnerId": {
+            "type": "string",
+            "description": "ID da loja vinculada; \"\" se for de residência"
+          }
+        },
+        "required": ["id", "description", "amountCents", "dueDate", "residentId", "shopOwnerId"]
+      },
+      "ExpensePage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Expense"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "description": "Página atual"
+          },
+          "pageSize": {
+            "type": "integer",
+            "description": "Itens por página"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total de itens em todas as páginas"
+          }
+        },
+        "required": ["items", "page", "pageSize", "total"]
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          }
+        },
+        "required": ["status"]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "E-mail"
+          },
+          "password": {
+            "type": "string",
+            "description": "Senha"
+          },
+          "useCookies": {
+            "type": "boolean",
+            "description": "true no web: os tokens vão só para cookies httpOnly e não voltam no corpo"
+          }
+        },
+        "required": ["email", "password"]
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data de criação (RFC3339)"
+          },
+          "createdById": {
+            "type": "string",
+            "description": "ID do usuário que criou (vem do token, nunca do corpo)"
+          },
+          "id": {
+            "type": "string",
+            "description": "ID único da notificação"
+          },
+          "message": {
+            "type": "string",
+            "description": "Conteúdo da mensagem"
+          },
+          "read": {
+            "type": "boolean",
+            "description": "Se o usuário autenticado já leu"
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Quando o usuário autenticado leu",
+            "nullable": true
+          },
+          "residentIds": {
+            "type": "array",
+            "description": "IDs das residências destinatárias",
+            "items": {
+              "type": "string"
+            }
+          },
+          "shopOwnerIds": {
+            "type": "array",
+            "description": "IDs das lojas destinatárias",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "message",
+          "createdById",
+          "createdAt",
+          "read",
+          "residentIds",
+          "shopOwnerIds"
+        ]
+      },
+      "NotificationPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "description": "Página atual"
+          },
+          "pageSize": {
+            "type": "integer",
+            "description": "Itens por página"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total de itens em todas as páginas"
+          }
+        },
+        "required": ["items", "page", "pageSize", "total"]
+      },
+      "RefreshRequest": {
+        "type": "object",
+        "description": "No web o corpo pode ser vazio: o refresh token vai no cookie cg_refresh.",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "Refresh token recebido no login ou no último refresh"
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "description": "O cadastro público sempre cria um morador (ROLE_USER). Papéis enviados aqui são ignorados.",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "E-mail (login); único, sem diferenciar maiúsculas"
+          },
+          "password": {
+            "type": "string",
+            "description": "Senha: 10+ caracteres, até 72 bytes, com letras e números; não pode conter o e-mail ou o username",
+            "minLength": 10
+          },
+          "username": {
+            "type": "string",
+            "description": "Nome de exibição"
+          }
+        },
+        "required": ["username", "email", "password"]
+      },
+      "RegisterResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Confirmação de registro"
+          }
+        },
+        "required": ["message"],
+        "example": {
+          "message": "User registered successfully!"
+        }
+      },
+      "Resident": {
+        "type": "object",
+        "properties": {
+          "condominiumId": {
+            "type": "string",
+            "description": "Bloco/condomínio informado no cadastro"
+          },
+          "floor": {
+            "type": "integer",
+            "description": "Andar"
+          },
+          "id": {
+            "type": "string",
+            "description": "ID único da residência"
+          },
+          "ownerId": {
+            "type": "string",
+            "description": "ID do usuário proprietário"
+          },
+          "unitNumber": {
+            "type": "string",
+            "description": "Número da unidade (único por condomínio)"
+          }
+        },
+        "required": ["id", "unitNumber", "floor", "condominiumId", "ownerId"]
+      },
+      "ResidentPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Resident"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "description": "Página atual"
+          },
+          "pageSize": {
+            "type": "integer",
+            "description": "Itens por página"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total de itens em todas as páginas"
+          }
+        },
+        "required": ["items", "page", "pageSize", "total"]
+      },
+      "ShopOwner": {
+        "type": "object",
+        "properties": {
+          "cnpj": {
+            "type": "string",
+            "description": "CNPJ no formato XX.XXX.XXX/XXXX-XX"
+          },
+          "floor": {
+            "type": "integer",
+            "description": "Andar"
+          },
+          "id": {
+            "type": "string",
+            "description": "ID único da loja"
+          },
+          "ownerId": {
+            "type": "string",
+            "description": "ID do usuário responsável"
+          },
+          "shopName": {
+            "type": "string",
+            "description": "Razão social / nome fantasia"
+          }
+        },
+        "required": ["id", "shopName", "cnpj", "floor", "ownerId"]
+      },
+      "ShopOwnerPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShopOwner"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "description": "Página atual"
+          },
+          "pageSize": {
+            "type": "integer",
+            "description": "Itens por página"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total de itens em todas as páginas"
+          }
+        },
+        "required": ["items", "page", "pageSize", "total"]
+      },
+      "TokenPair": {
+        "type": "object",
+        "description": "accessToken e refreshToken só vêm no fluxo do app; no fluxo com cookies ficam de fora.",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "JWT — enviar em Authorization: Bearer \u003ctoken\u003e"
+          },
+          "expiresIn": {
+            "type": "integer",
+            "description": "Validade do access token, em segundos"
+          },
+          "refreshToken": {
+            "type": "string",
+            "description": "Opaco, de uso único: cada refresh devolve um novo e invalida o anterior"
+          },
+          "roles": {
+            "type": "array",
+            "description": "Papéis",
+            "items": {
+              "type": "string",
+              "enum": ["ROLE_USER", "ROLE_ADMIN"]
+            }
+          },
+          "tokenType": {
+            "type": "string",
+            "enum": ["Bearer"]
+          }
+        },
+        "required": ["tokenType", "expiresIn", "roles"]
+      },
+      "UpdateExpenseRequest": {
+        "type": "object",
+        "properties": {
+          "amountCents": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Novo valor em centavos (\u003e 0)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Nova descrição"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Nova data de vencimento (RFC3339)"
+          }
+        }
+      },
+      "UpdateNotificationRequest": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Nova mensagem"
+          },
+          "residentIds": {
+            "type": "array",
+            "description": "Novos destinatários (residências)",
+            "items": {
+              "type": "string"
+            }
+          },
+          "shopOwnerIds": {
+            "type": "array",
+            "description": "Novos destinatários (lojas)",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "UpdateResidentRequest": {
+        "type": "object",
+        "properties": {
+          "floor": {
+            "type": "integer",
+            "description": "Novo andar"
+          },
+          "unitNumber": {
+            "type": "string",
+            "description": "Novo número da unidade"
+          }
+        }
+      },
+      "UpdateShopOwnerRequest": {
+        "type": "object",
+        "description": "CNPJ é imutável após criação.",
+        "properties": {
+          "floor": {
+            "type": "integer",
+            "description": "Novo andar"
+          },
+          "shopName": {
+            "type": "string",
+            "description": "Novo nome"
+          }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "description": "Apenas username e roles podem ser alterados. E-mail é imutável.",
+        "properties": {
+          "roles": {
+            "type": "array",
+            "description": "Papéis",
+            "items": {
+              "type": "string",
+              "enum": ["ROLE_USER", "ROLE_ADMIN"]
+            }
+          },
+          "username": {
+            "type": "string",
+            "description": "Novo nome de exibição"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "E-mail do usuário"
+          },
+          "id": {
+            "type": "string",
+            "description": "ID único do usuário"
+          },
+          "roles": {
+            "type": "array",
+            "description": "Papéis",
+            "items": {
+              "type": "string",
+              "enum": ["ROLE_USER", "ROLE_ADMIN"]
+            }
+          },
+          "username": {
+            "type": "string",
+            "description": "Nome de exibição"
+          }
+        },
+        "required": ["id", "username", "email", "roles"]
+      },
+      "UserPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/User"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "description": "Página atual"
+          },
+          "pageSize": {
+            "type": "integer",
+            "description": "Itens por página"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total de itens em todas as páginas"
+          }
+        },
+        "required": ["items", "page", "pageSize", "total"]
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token (JWT) de POST /auth/login ou /auth/refresh. Expira em 15 minutos."
+      },
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "cg_access",
+        "description": "Cookie httpOnly definido pelo login com useCookies=true (web)."
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "Cadastro, login e sessão"
+    },
+    {
+      "name": "Users",
+      "description": "Gestão de usuários (ROLE_ADMIN), exceto /users/me"
+    },
+    {
+      "name": "Residents",
+      "description": "Unidades residenciais"
+    },
+    {
+      "name": "ShopOwners",
+      "description": "Lojas"
+    },
+    {
+      "name": "Expenses",
+      "description": "Despesas"
+    },
+    {
+      "name": "Notifications",
+      "description": "Notificações"
+    },
+    {
+      "name": "System",
+      "description": "Health check"
+    }
+  ]
+}

@@ -3,7 +3,15 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { createExpense, deleteExpense, fetchExpenses, fetchResidents, fetchShopOwners } from "@/lib/api";
+import {
+  createExpense,
+  deleteExpense,
+  fetchAll,
+  fetchExpenses,
+  fetchResidents,
+  fetchShopOwners,
+} from "@/lib/api";
+import { apiErrorMessage } from "@/lib/errors";
 import { EXPENSE_DESCRIPTIONS, type Expense, type Resident, type ShopOwner } from "@/types";
 import Papa from "papaparse";
 import { useEffect, useMemo, useState } from "react";
@@ -63,27 +71,31 @@ function ExpensesPage() {
 
   const loadExpenses = async () => {
     try {
-      const { data } = await fetchExpenses();
-      setExpenses(Array.isArray(data) ? data : []);
+      setExpenses(await fetchAll(fetchExpenses));
     } catch {
       setError("Erro ao buscar despesas.");
     }
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: carga única na montagem
   useEffect(() => {
     loadExpenses();
-    fetchResidents().then(({ data }) => setResidents(Array.isArray(data) ? data : [])).catch(() => {});
-    fetchShopOwners().then(({ data }) => setShopOwners(Array.isArray(data) ? data : [])).catch(() => {});
+    fetchAll(fetchResidents)
+      .then(setResidents)
+      .catch(() => {});
+    fetchAll(fetchShopOwners)
+      .then(setShopOwners)
+      .catch(() => {});
   }, []);
 
   const residentOptions = [
     { value: "", label: "Selecione um morador" },
-    ...residents.map((r) => ({ value: r.id, label: r.name })),
+    ...residents.map((r) => ({ value: r.id, label: `Unidade ${r.unitNumber}` })),
   ];
 
   const shopOwnerOptions = [
     { value: "", label: "Selecione um lojista" },
-    ...shopOwners.map((s) => ({ value: s.id, label: s.name })),
+    ...shopOwners.map((s) => ({ value: s.id, label: s.shopName })),
   ];
 
   const filtered = useMemo(() => {
@@ -106,7 +118,10 @@ function ExpensesPage() {
   }, [expenses, filterType, searchTerm, sortField, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
-  const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const paginated = filtered.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const handleSort = (field: SortField) => {
     if (field === sortField) {
@@ -138,8 +153,8 @@ function ExpensesPage() {
       });
       setForm({ description: "", amount: "", dueDate: "", linkType: "residentId", linkId: "" });
       await loadExpenses();
-    } catch {
-      setError("Erro ao criar despesa.");
+    } catch (err) {
+      setError(apiErrorMessage(err, "Erro ao criar despesa."));
     } finally {
       setLoading(false);
     }
@@ -167,7 +182,9 @@ function ExpensesPage() {
       const rows = z.array(CSV_SCHEMA).parse(result.data);
       for (const row of rows) {
         const parsedDate = new Date(row.dueDate);
-        const parsedAmount = Number.parseFloat(row.amount.replace(/[^\d.,]/g, "").replace(",", "."));
+        const parsedAmount = Number.parseFloat(
+          row.amount.replace(/[^\d.,]/g, "").replace(",", ".")
+        );
 
         if (Number.isNaN(parsedDate.getTime())) throw new Error(`Data inválida: ${row.dueDate}`);
         if (Number.isNaN(parsedAmount) || parsedAmount < 0)
@@ -325,23 +342,32 @@ function ExpensesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-surface-alt text-left text-text-secondary">
-                    <th
-                      className="cursor-pointer px-4 py-3 font-medium hover:text-text-primary"
-                      onClick={() => handleSort("description")}
-                    >
-                      Descrição <SortIcon field="description" />
+                    <th className="px-4 py-3 font-medium">
+                      <button
+                        type="button"
+                        className="font-medium hover:text-text-primary"
+                        onClick={() => handleSort("description")}
+                      >
+                        Descrição <SortIcon field="description" />
+                      </button>
                     </th>
-                    <th
-                      className="cursor-pointer px-4 py-3 font-medium hover:text-text-primary"
-                      onClick={() => handleSort("amountCents")}
-                    >
-                      Valor <SortIcon field="amountCents" />
+                    <th className="px-4 py-3 font-medium">
+                      <button
+                        type="button"
+                        className="font-medium hover:text-text-primary"
+                        onClick={() => handleSort("amountCents")}
+                      >
+                        Valor <SortIcon field="amountCents" />
+                      </button>
                     </th>
-                    <th
-                      className="cursor-pointer px-4 py-3 font-medium hover:text-text-primary"
-                      onClick={() => handleSort("dueDate")}
-                    >
-                      Vencimento <SortIcon field="dueDate" />
+                    <th className="px-4 py-3 font-medium">
+                      <button
+                        type="button"
+                        className="font-medium hover:text-text-primary"
+                        onClick={() => handleSort("dueDate")}
+                      >
+                        Vencimento <SortIcon field="dueDate" />
+                      </button>
                     </th>
                     <th className="px-4 py-3 font-medium">Ações</th>
                   </tr>
@@ -350,14 +376,19 @@ function ExpensesPage() {
                   {paginated.map((expense) => (
                     <tr key={expense.id} className="hover:bg-surface-alt">
                       <td className="px-4 py-3 text-text-primary">{expense.description}</td>
-                      <td className="px-4 py-3 text-text-primary">{fromCents(expense.amountCents)}</td>
+                      <td className="px-4 py-3 text-text-primary">
+                        {fromCents(expense.amountCents)}
+                      </td>
                       <td className="px-4 py-3 text-text-secondary">
                         {new Date(expense.dueDate).toLocaleDateString("pt-BR")}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-3">
-                          <button className="text-accent hover:underline">Editar</button>
+                          <button type="button" className="text-accent hover:underline">
+                            Editar
+                          </button>
                           <button
+                            type="button"
                             onClick={() => handleDelete(expense.id)}
                             className="text-danger hover:underline"
                           >

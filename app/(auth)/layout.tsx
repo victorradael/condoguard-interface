@@ -7,13 +7,7 @@ function AuthLayout({ children }: { children: React.ReactNode }) {
         {/* Brand */}
         <div className="mb-8 flex flex-col items-center">
           <div className="rounded-xl bg-sidebar px-8 py-5">
-            <Image
-              src="/logo.svg"
-              alt="CondoGuard"
-              width={180}
-              height={72}
-              priority
-            />
+            <Image src="/logo.svg" alt="CondoGuard" width={180} height={72} priority />
           </div>
         </div>
 

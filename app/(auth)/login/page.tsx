@@ -4,18 +4,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/auth-context";
 import { login } from "@/lib/api";
-import type { UserRole } from "@/types";
+import { loginErrorMessage } from "@/lib/errors";
+import { safeNext } from "@/lib/session";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
-function LoginPage() {
-  const [username, setUsername] = useState("");
+function LoginForm() {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const { setAuth } = useAuth();
+  const { user, reload } = useAuth();
   const router = useRouter();
+  const next = safeNext(useSearchParams().get("next"));
+
+  // Sessão ainda válida (o AuthProvider já tentou o refresh): vai direto ao destino.
+  useEffect(() => {
+    if (user) router.replace(next);
+  }, [user, next, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,11 +30,11 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      const { data } = await login(username, password);
-      setAuth(data.token, data.role as UserRole);
-      router.push("/dashboard");
-    } catch {
-      setError("Usuário ou senha inválidos.");
+      await login(email, password);
+      await reload();
+      router.push(next);
+    } catch (err) {
+      setError(loginErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -43,14 +50,14 @@ function LoginPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          id="username"
-          label="Usuário"
-          type="text"
-          placeholder="Seu nome de usuário"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          id="email"
+          label="E-mail"
+          type="email"
+          placeholder="seu@email.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           required
-          autoComplete="username"
+          autoComplete="email"
         />
         <Input
           id="password"
@@ -74,6 +81,14 @@ function LoginPage() {
         </Link>
       </p>
     </>
+  );
+}
+
+function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
 

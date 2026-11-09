@@ -1,21 +1,20 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import { Pager } from "@/components/ui/pager";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { fetchShopOwners } from "@/lib/api";
-import type { ShopOwner } from "@/types";
-import { useEffect, useState } from "react";
 
 function ShopOwnersPage() {
-  const [shopOwners, setShopOwners] = useState<ShopOwner[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchShopOwners()
-      .then(({ data }) => setShopOwners(Array.isArray(data) ? data : []))
-      .catch(() => setError("Erro ao buscar lojistas."))
-      .finally(() => setLoading(false));
-  }, []);
+  const {
+    items: shopOwners,
+    page,
+    setPage,
+    total,
+    pageSize,
+    error,
+    loading,
+  } = usePagedList(fetchShopOwners, "Erro ao buscar lojistas.");
 
   return (
     <div className="space-y-6">
@@ -36,12 +35,18 @@ function ShopOwnersPage() {
             <Card key={owner.id}>
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="font-semibold text-text-primary">{owner.name}</p>
-                  <p className="mt-0.5 text-sm text-text-secondary">{owner.address}</p>
+                  <p className="font-semibold text-text-primary">{owner.shopName}</p>
+                  <p className="mt-0.5 text-sm text-text-secondary">
+                    {owner.floor ? `${owner.floor}º andar · ` : ""}CNPJ {owner.cnpj}
+                  </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <button className="text-sm text-accent hover:underline">Editar</button>
-                  <button className="text-sm text-danger hover:underline">Deletar</button>
+                  <button type="button" className="text-sm text-accent hover:underline">
+                    Editar
+                  </button>
+                  <button type="button" className="text-sm text-danger hover:underline">
+                    Deletar
+                  </button>
                 </div>
               </div>
             </Card>
@@ -52,6 +57,9 @@ function ShopOwnersPage() {
           <p className="text-center text-text-secondary">Nenhum lojista encontrado.</p>
         </Card>
       )}
+      {total > pageSize ? (
+        <Pager page={page} pageSize={pageSize} total={total} onChange={setPage} />
+      ) : null}
     </div>
   );
 }
