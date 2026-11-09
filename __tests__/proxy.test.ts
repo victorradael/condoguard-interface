@@ -53,7 +53,7 @@ describe("proxy", () => {
     vi.resetModules();
     vi.stubEnv("NEXT_PUBLIC_API_URL", "/api");
     vi.stubEnv("API_INTERNAL_URL", "http://api:8080/");
-    const { middleware: mw } = await import("@/proxy");
+    const { proxy: mw } = await import("@/proxy");
     mockMe(200, me(["ROLE_USER"]));
     const res = await mw(req("/dashboard", "cg_access=abc"));
     expect(res.headers.get("x-middleware-next")).toBe("1");
@@ -66,7 +66,7 @@ describe("proxy", () => {
     vi.resetModules();
     vi.stubEnv("NEXT_PUBLIC_API_URL", "/api");
     vi.stubEnv("API_INTERNAL_URL", "");
-    const { middleware: mw } = await import("@/proxy");
+    const { proxy: mw } = await import("@/proxy");
     mockMe(200, me(["ROLE_USER"]));
     const res = await mw(req("/dashboard", "cg_access=abc"));
     expect(new URL(res.headers.get("location") as string).pathname).toBe("/login");
