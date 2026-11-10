@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -69,9 +69,7 @@ function UnitDetailPage({ params }: PageParams) {
         fetchUnitLinks(unitId, showAll ? undefined : true),
       ]);
       const u = unitRes.data;
-      setUnitLabel(
-        `Unidade ${u.unitNumber}${u.blockName ? ` — ${u.blockName}` : ""}`
-      );
+      setUnitLabel(`Unidade ${u.unitNumber}${u.blockName ? ` — ${u.blockName}` : ""}`);
       setLinks(linksRes.data.items ?? []);
       setError(null);
     } catch {
@@ -270,12 +268,8 @@ function UnitDetailPage({ params }: PageParams) {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-text-primary">{link.personName}</span>
-                    <Badge variant={linkBadgeVariant(link.kind)}>
-                      {KIND_LABELS[link.kind]}
-                    </Badge>
-                    {!link.active ? (
-                      <Badge variant="danger">Encerrado</Badge>
-                    ) : null}
+                    <Badge variant={linkBadgeVariant(link.kind)}>{KIND_LABELS[link.kind]}</Badge>
+                    {!link.active ? <Badge variant="danger">Encerrado</Badge> : null}
                   </div>
                   <p className="mt-0.5 text-xs text-text-muted">
                     De {link.startsOn}
@@ -320,9 +314,7 @@ function UnitDetailPage({ params }: PageParams) {
             label="Papel"
             options={KIND_OPTIONS.map((k) => ({ value: k.value, label: k.label }))}
             value={addForm.kind}
-            onChange={(e) =>
-              setAddForm((f) => ({ ...f, kind: e.target.value as UnitLinkKind }))
-            }
+            onChange={(e) => setAddForm((f) => ({ ...f, kind: e.target.value as UnitLinkKind }))}
           />
           <label className="flex items-center gap-2 text-sm text-text-secondary">
             <input
@@ -462,11 +454,7 @@ function UnitDetailPage({ params }: PageParams) {
           )}
           {transferError ? <p className="text-sm text-danger">{transferError}</p> : null}
           <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setTransferOpen(false)}
-            >
+            <Button type="button" variant="secondary" onClick={() => setTransferOpen(false)}>
               Cancelar
             </Button>
             <Button type="submit" loading={transferSaving}>

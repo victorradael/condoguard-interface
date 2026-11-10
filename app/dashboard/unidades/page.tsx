@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Pager } from "@/components/ui/pager";
 import { Select } from "@/components/ui/select";
 import { useAuth } from "@/contexts/auth-context";
-import { PAGE_SIZE, usePagedList } from "@/hooks/use-paged-list";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { createUnit, deleteUnit, fetchAll, fetchBlocks, fetchUnits, updateUnit } from "@/lib/api";
 import { apiErrorMessage } from "@/lib/errors";
 import { hasWriteRole } from "@/lib/session";
@@ -28,11 +28,15 @@ function UnidadesPage() {
     [filterBlockId]
   );
 
-  const { items, page, setPage, total, pageSize, error, setError, loading, reload } =
-    usePagedList(fetchPage, "Erro ao buscar unidades.");
+  const { items, page, setPage, total, pageSize, error, setError, loading, reload } = usePagedList(
+    fetchPage,
+    "Erro ao buscar unidades."
+  );
 
   useEffect(() => {
-    fetchAll<Block>(fetchBlocks).then(setBlocks).catch(() => {});
+    fetchAll<Block>(fetchBlocks)
+      .then(setBlocks)
+      .catch(() => {});
   }, []);
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -83,10 +87,7 @@ function UnidadesPage() {
       await reload(page);
     } catch (err) {
       setFormError(
-        apiErrorMessage(
-          err,
-          editing ? "Erro ao atualizar unidade." : "Erro ao criar unidade."
-        )
+        apiErrorMessage(err, editing ? "Erro ao atualizar unidade." : "Erro ao criar unidade.")
       );
     } finally {
       setSaving(false);
@@ -122,9 +123,7 @@ function UnidadesPage() {
           <h1 className="text-2xl font-bold text-text-primary">Unidades</h1>
           <p className="mt-1 text-sm text-text-secondary">Unidades do condomínio</p>
         </div>
-        {canWrite ? (
-          <Button onClick={openCreate}>Nova unidade</Button>
-        ) : null}
+        {canWrite ? <Button onClick={openCreate}>Nova unidade</Button> : null}
       </div>
 
       <div className="max-w-xs">
@@ -230,9 +229,7 @@ function UnidadesPage() {
             value={form.blockId}
             onChange={(e) => setForm((f) => ({ ...f, blockId: e.target.value }))}
           />
-          {formError ? (
-            <p className="text-sm text-danger">{formError}</p>
-          ) : null}
+          {formError ? <p className="text-sm text-danger">{formError}</p> : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={closeDialog}>
               Cancelar

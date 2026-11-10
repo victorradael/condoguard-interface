@@ -4,11 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/auth-context";
-import {
-  fetchPerson,
-  fetchPersonInvitations,
-  sendInvitation,
-} from "@/lib/api";
+import { fetchPerson, fetchPersonInvitations, sendInvitation } from "@/lib/api";
 import { apiErrorMessage } from "@/lib/errors";
 import { hasCpfReadRole, hasWriteRole } from "@/lib/session";
 import type { InvitationRecord, Person } from "@/types";
@@ -196,9 +192,7 @@ function PersonDetailPage({ params }: PageParams) {
               </Button>
             </div>
 
-            {sendError ? (
-              <p className="text-sm text-danger">{sendError}</p>
-            ) : null}
+            {sendError ? <p className="text-sm text-danger">{sendError}</p> : null}
 
             {shownToken ? (
               <div className="rounded-md border border-border bg-surface-alt p-3 text-sm">
@@ -217,10 +211,7 @@ function PersonDetailPage({ params }: PageParams) {
             {invitations.length > 0 ? (
               <div className="mt-2 divide-y divide-border">
                 {invitations.map((inv) => (
-                  <div
-                    key={inv.id}
-                    className="flex items-center justify-between py-2 text-sm"
-                  >
+                  <div key={inv.id} className="flex items-center justify-between py-2 text-sm">
                     <span className="text-text-secondary capitalize">{inv.channel}</span>
                     <div className="flex items-center gap-2">
                       <Badge variant={STATUS_VARIANTS[inv.status]}>

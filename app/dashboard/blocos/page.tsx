@@ -17,8 +17,10 @@ function BlocosPage() {
   const { user } = useAuth();
   const canWrite = hasWriteRole(user?.roles);
 
-  const { items, page, setPage, total, pageSize, error, setError, loading, reload } =
-    usePagedList(fetchBlocks, "Erro ao buscar blocos.");
+  const { items, page, setPage, total, pageSize, error, setError, loading, reload } = usePagedList(
+    fetchBlocks,
+    "Erro ao buscar blocos."
+  );
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Block | null>(null);
@@ -85,9 +87,7 @@ function BlocosPage() {
           <h1 className="text-2xl font-bold text-text-primary">Blocos</h1>
           <p className="mt-1 text-sm text-text-secondary">Torres e blocos do condomínio</p>
         </div>
-        {canWrite ? (
-          <Button onClick={openCreate}>Novo bloco</Button>
-        ) : null}
+        {canWrite ? <Button onClick={openCreate}>Novo bloco</Button> : null}
       </div>
 
       {error ? (
@@ -155,9 +155,7 @@ function BlocosPage() {
             required
             autoFocus
           />
-          {formError ? (
-            <p className="text-sm text-danger">{formError}</p>
-          ) : null}
+          {formError ? <p className="text-sm text-danger">{formError}</p> : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={closeDialog}>
               Cancelar

@@ -5,9 +5,9 @@ import type {
   CreateUnitLinkBody,
   Expense,
   ImportPreviewResponse,
+  InvitationRecord,
   InviteAcceptResponse,
   InviteInspectResponse,
-  InvitationRecord,
   LoginMfaResponse,
   Notification,
   Page,
@@ -19,7 +19,6 @@ import type {
   TransferResult,
   Unit,
   UnitLink,
-  UnitLinkKind,
   User,
   UserRole,
 } from "@/types";
@@ -92,11 +91,8 @@ export const login = (email: string, password: string, condominiumId?: string) =
     ...(condominiumId ? { condominiumId } : {}),
   });
 
-export const loginCondominiumChoice = (
-  email: string,
-  password: string,
-  condominiumId: string
-) => login(email, password, condominiumId);
+export const loginCondominiumChoice = (email: string, password: string, condominiumId: string) =>
+  login(email, password, condominiumId);
 
 // 409 ao logar sem condominiumId quando há mais de um vínculo
 export interface LoginCondominiumsBody {
@@ -112,8 +108,7 @@ export const fetchMe = () => api.get<User>("/users/me");
 
 // Email verification
 export const verifyEmail = (token: string) => api.post("/auth/email/verify", { token });
-export const resendVerificationEmail = (email: string) =>
-  api.post("/auth/email/resend", { email });
+export const resendVerificationEmail = (email: string) => api.post("/auth/email/resend", { email });
 
 // Password reset
 export const forgotPassword = (email: string) => api.post("/auth/password/forgot", { email });
@@ -176,12 +171,7 @@ export const updateBlock = (id: string, name: string) => api.put<Block>(`/blocks
 export const deleteBlock = (id: string) => api.delete(`/blocks/${id}`);
 
 // Units
-export const fetchUnits = (
-  page = 1,
-  pageSize = 20,
-  blockId?: string,
-  sort?: "number"
-) =>
+export const fetchUnits = (page = 1, pageSize = 20, blockId?: string, sort?: "number") =>
   api.get<Page<Unit>>("/units", {
     params: { page, pageSize, ...(blockId ? { blockId } : {}), ...(sort ? { sort } : {}) },
   });

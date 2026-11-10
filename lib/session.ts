@@ -10,12 +10,7 @@ export const isAdminPath = (pathname: string) =>
 
 // Papéis com acesso a área administrativa.
 // Aceita tanto os nomes novos (pós-migração 00003) quanto os antigos (compat.).
-const ADMIN_ROLES: readonly string[] = [
-  "ROLE_ADMIN",
-  "administradora",
-  "sindico",
-  "conselho",
-];
+const ADMIN_ROLES: readonly string[] = ["ROLE_ADMIN", "administradora", "sindico", "conselho"];
 
 export const hasAdminRole = (roles: readonly UserRole[] | undefined | null) =>
   !!roles?.some((r) => ADMIN_ROLES.includes(r));

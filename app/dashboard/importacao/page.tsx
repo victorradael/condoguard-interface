@@ -180,12 +180,10 @@ function ImportacaoPage() {
                 <CardTitle className="text-danger">Erros no arquivo</CardTitle>
               </CardHeader>
               <div className="mt-2 divide-y divide-border">
-                {preview.errors.map((e: ImportError, i: number) => (
-                  <div key={i} className="py-2 text-sm">
+                {preview.errors.map((e: ImportError) => (
+                  <div key={`${e.line}-${e.field ?? ""}`} className="py-2 text-sm">
                     <span className="font-medium text-text-secondary">Linha {e.line}</span>
-                    {e.field ? (
-                      <span className="ml-1 text-text-muted">({e.field})</span>
-                    ) : null}
+                    {e.field ? <span className="ml-1 text-text-muted">({e.field})</span> : null}
                     <span className="ml-2 text-danger">{e.message}</span>
                   </div>
                 ))}
@@ -196,7 +194,9 @@ function ImportacaoPage() {
           {preview.preview.length > 0 ? (
             <Card>
               <CardHeader>
-                <CardTitle>Linhas a processar{preview.truncated ? " (prévia parcial)" : ""}</CardTitle>
+                <CardTitle>
+                  Linhas a processar{preview.truncated ? " (prévia parcial)" : ""}
+                </CardTitle>
               </CardHeader>
               <div className="mt-2 overflow-x-auto">
                 <table className="w-full text-sm">
@@ -211,8 +211,8 @@ function ImportacaoPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {preview.preview.map((row, i) => (
-                      <tr key={i} className={row.action === "error" ? "text-danger" : ""}>
+                    {preview.preview.map((row) => (
+                      <tr key={row.line} className={row.action === "error" ? "text-danger" : ""}>
                         <td className="py-1.5 pr-4 text-text-muted">{row.line}</td>
                         <td className="py-1.5 pr-4">{row.block ?? "—"}</td>
                         <td className="py-1.5 pr-4">{row.unit}</td>
@@ -268,9 +268,7 @@ function ImportacaoPage() {
             <Button variant="secondary" onClick={handleReset}>
               Nova importação
             </Button>
-            <Button onClick={() => router.push("/dashboard/unidades")}>
-              Ver unidades
-            </Button>
+            <Button onClick={() => router.push("/dashboard/unidades")}>Ver unidades</Button>
           </div>
         </Card>
       ) : null}

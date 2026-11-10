@@ -6,7 +6,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Pager } from "@/components/ui/pager";
 import { useAuth } from "@/contexts/auth-context";
-import { PAGE_SIZE, usePagedList } from "@/hooks/use-paged-list";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { createPerson, deletePerson, fetchPeople, updatePerson } from "@/lib/api";
 import { apiErrorMessage } from "@/lib/errors";
 import { hasCpfReadRole, hasWriteRole } from "@/lib/session";
@@ -18,7 +18,7 @@ function maskCpf(cpf: string | null | undefined): string {
   if (!cpf) return "";
   const digits = cpf.replace(/\D/g, "");
   if (digits.length !== 11) return "***.***.***-**";
-  return `***.***.•••-**`;
+  return "***.***.•••-**";
 }
 
 function PessoasPage() {
@@ -34,8 +34,10 @@ function PessoasPage() {
     [q]
   );
 
-  const { items, page, setPage, total, pageSize, error, setError, loading, reload } =
-    usePagedList(fetchPage, "Erro ao buscar pessoas.");
+  const { items, page, setPage, total, pageSize, error, setError, loading, reload } = usePagedList(
+    fetchPage,
+    "Erro ao buscar pessoas."
+  );
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,9 +121,7 @@ function PessoasPage() {
           <h1 className="text-2xl font-bold text-text-primary">Pessoas</h1>
           <p className="mt-1 text-sm text-text-secondary">Moradores e proprietários cadastrados</p>
         </div>
-        {canWrite ? (
-          <Button onClick={openCreate}>Nova pessoa</Button>
-        ) : null}
+        {canWrite ? <Button onClick={openCreate}>Nova pessoa</Button> : null}
       </div>
 
       <form onSubmit={handleSearch} className="flex max-w-sm gap-2">

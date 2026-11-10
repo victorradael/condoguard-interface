@@ -128,8 +128,8 @@ function ConviteForm() {
         <h2 className="text-lg font-semibold text-text-primary">Convite aceito!</h2>
         {stage.verifyEmail ? (
           <p className="text-sm text-text-secondary">
-            Enviamos um e-mail de verificação para{" "}
-            <strong>{stage.email}</strong>. Confirme seu e-mail antes de entrar.
+            Enviamos um e-mail de verificação para <strong>{stage.email}</strong>. Confirme seu
+            e-mail antes de entrar.
           </p>
         ) : (
           <p className="text-sm text-text-secondary">

@@ -20,17 +20,9 @@ export function Dialog({ open, onClose, title, children }: DialogProps) {
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-    >
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: backdrop dismiss is supplementary to the Escape key handler above */}
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
       <div className="relative z-10 w-full max-w-lg rounded-lg border border-border bg-surface p-6 shadow-lg">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-text-primary">{title}</h2>
