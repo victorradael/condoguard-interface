@@ -10,15 +10,41 @@ export const isAdminPath = (pathname: string) =>
 
 // Papéis com acesso a área administrativa.
 // Aceita tanto os nomes novos (pós-migração 00003) quanto os antigos (compat.).
-const ADMIN_ROLES: readonly string[] = [
+const ADMIN_ROLES: readonly string[] = ["ROLE_ADMIN", "administradora", "sindico", "conselho"];
+
+export const hasAdminRole = (roles: readonly UserRole[] | undefined | null) =>
+  !!roles?.some((r) => ADMIN_ROLES.includes(r));
+
+// units.write / people.write: administradora e sindico
+const WRITE_ROLES: readonly string[] = ["ROLE_ADMIN", "administradora", "sindico"];
+export const hasWriteRole = (roles: readonly UserRole[] | undefined | null) =>
+  !!roles?.some((r) => WRITE_ROLES.includes(r));
+
+// units.read_all / people.read_all: inclui porteiro
+const UNIT_READ_ROLES: readonly string[] = [
+  "ROLE_ADMIN",
+  "administradora",
+  "sindico",
+  "conselho",
+  "porteiro",
+];
+export const hasUnitReadRole = (roles: readonly UserRole[] | undefined | null) =>
+  !!roles?.some((r) => UNIT_READ_ROLES.includes(r));
+
+// people.read_contact: administradora, sindico, conselho
+const CONTACT_READ_ROLES: readonly string[] = [
   "ROLE_ADMIN",
   "administradora",
   "sindico",
   "conselho",
 ];
+export const hasContactReadRole = (roles: readonly UserRole[] | undefined | null) =>
+  !!roles?.some((r) => CONTACT_READ_ROLES.includes(r));
 
-export const hasAdminRole = (roles: readonly UserRole[] | undefined | null) =>
-  !!roles?.some((r) => ADMIN_ROLES.includes(r));
+// people.read_cpf: administradora e sindico
+const CPF_READ_ROLES: readonly string[] = ["ROLE_ADMIN", "administradora", "sindico"];
+export const hasCpfReadRole = (roles: readonly UserRole[] | undefined | null) =>
+  !!roles?.some((r) => CPF_READ_ROLES.includes(r));
 
 // Só aceita caminhos internos como destino pós-login (evita open redirect).
 export const safeNext = (next: string | null | undefined) =>
