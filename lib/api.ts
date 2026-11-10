@@ -1,11 +1,16 @@
 import type {
+  CondominiumOption,
   CreateExpense,
   Expense,
+  LoginMfaResponse,
   Notification,
   Page,
   Resident,
   ShopOwner,
+  TotpEnableResponse,
+  TotpSetupResponse,
   User,
+  UserRole,
 } from "@/types";
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 import axios from "axios";
@@ -64,13 +69,28 @@ api.interceptors.response.use(
   }
 );
 
-// Auth
-export const login = (email: string, password: string) =>
-  api.post<{ roles: User["roles"]; tokenType: string; expiresIn: number }>("/auth/login", {
+// Auth — login pode responder 200 com sessão, 200 com mfaRequired, ou 409 condominiums
+export type LoginSuccessResponse = { roles: UserRole[]; tokenType: string; expiresIn: number };
+export type LoginResponse = LoginSuccessResponse | LoginMfaResponse;
+
+export const login = (email: string, password: string, condominiumId?: string) =>
+  api.post<LoginResponse>("/auth/login", {
     email,
     password,
     useCookies: true,
+    ...(condominiumId ? { condominiumId } : {}),
   });
+
+export const loginCondominiumChoice = (
+  email: string,
+  password: string,
+  condominiumId: string
+) => login(email, password, condominiumId);
+
+// 409 ao logar sem condominiumId quando há mais de um vínculo
+export interface LoginCondominiumsBody {
+  condominiums: CondominiumOption[];
+}
 
 export const register = (username: string, email: string, password: string) =>
   api.post("/auth/register", { username, email, password });
@@ -78,6 +98,26 @@ export const register = (username: string, email: string, password: string) =>
 export const logout = () => api.post("/auth/logout");
 export const refresh = () => api.post("/auth/refresh");
 export const fetchMe = () => api.get<User>("/users/me");
+
+// Email verification
+export const verifyEmail = (token: string) => api.post("/auth/email/verify", { token });
+export const resendVerificationEmail = (email: string) =>
+  api.post("/auth/email/resend", { email });
+
+// Password reset
+export const forgotPassword = (email: string) => api.post("/auth/password/forgot", { email });
+export const resetPassword = (token: string, password: string) =>
+  api.post("/auth/password/reset", { token, password });
+
+// 2FA — mfaToken é passado no corpo quando vem do fluxo de login (não autenticado)
+export const setup2fa = (mfaToken?: string) =>
+  api.post<TotpSetupResponse>("/auth/2fa/setup", mfaToken ? { mfaToken } : {});
+
+export const enable2fa = (code: string, mfaToken?: string) =>
+  api.post<TotpEnableResponse>("/auth/2fa/enable", { code, ...(mfaToken ? { mfaToken } : {}) });
+
+export const verify2fa = (code: string, mfaToken: string) =>
+  api.post("/auth/2fa/verify", { code, mfaToken, useCookies: true });
 
 // Toda listagem responde { items, page, pageSize, total }
 const list =

@@ -1,4 +1,4 @@
-import { api, fetchAll, login } from "@/lib/api";
+import { api, enable2fa, fetchAll, forgotPassword, login, resetPassword, setup2fa, verifyEmail, verify2fa } from "@/lib/api";
 import type { AxiosAdapter, AxiosRequestConfig, AxiosResponse } from "axios";
 import { AxiosError } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -86,5 +86,76 @@ describe("cliente da API", () => {
     expect(fetchPage).toHaveBeenCalledTimes(3);
     expect(fetchPage.mock.calls[0]).toEqual([1, 100]);
     expect(items).toHaveLength(6);
+  });
+
+  it("login com condominiumId inclui o campo no corpo", async () => {
+    let seen: AxiosRequestConfig | undefined;
+    setup((config) => {
+      seen = config;
+      return { status: 200, data: { roles: ["sindico"], tokenType: "Bearer", expiresIn: 900 } };
+    });
+    await login("a@b.com", "senha-segura-123", "condo-id-abc");
+    expect(JSON.parse(seen?.data)).toMatchObject({ condominiumId: "condo-id-abc" });
+  });
+
+  it("verifyEmail envia token no corpo", async () => {
+    let seen: AxiosRequestConfig | undefined;
+    setup((config) => {
+      seen = config;
+      return { status: 202 };
+    });
+    await verifyEmail("tok-abc");
+    expect(JSON.parse(seen?.data)).toEqual({ token: "tok-abc" });
+  });
+
+  it("forgotPassword envia e-mail no corpo", async () => {
+    let seen: AxiosRequestConfig | undefined;
+    setup((config) => {
+      seen = config;
+      return { status: 202 };
+    });
+    await forgotPassword("user@x.com");
+    expect(JSON.parse(seen?.data)).toEqual({ email: "user@x.com" });
+  });
+
+  it("resetPassword envia token e senha", async () => {
+    let seen: AxiosRequestConfig | undefined;
+    setup((config) => {
+      seen = config;
+      return { status: 204 };
+    });
+    await resetPassword("reset-tok", "nova-senha-42");
+    expect(JSON.parse(seen?.data)).toMatchObject({ token: "reset-tok", password: "nova-senha-42" });
+  });
+
+  it("setup2fa envia mfaToken quando fornecido", async () => {
+    let seen: AxiosRequestConfig | undefined;
+    setup((config) => {
+      seen = config;
+      return { status: 200, data: { secret: "S", otpauthUrl: "otpauth://u", qrCode: "b64" } };
+    });
+    await setup2fa("mfa-tok-123");
+    expect(JSON.parse(seen?.data)).toMatchObject({ mfaToken: "mfa-tok-123" });
+  });
+
+  it("verify2fa envia código e mfaToken com useCookies", async () => {
+    let seen: AxiosRequestConfig | undefined;
+    setup((config) => {
+      seen = config;
+      return { status: 200 };
+    });
+    await verify2fa("654321", "mfa-tok-xyz");
+    const body = JSON.parse(seen?.data);
+    expect(body).toMatchObject({ code: "654321", mfaToken: "mfa-tok-xyz", useCookies: true });
+  });
+
+  it("enable2fa envia código e mfaToken quando fornecido", async () => {
+    let seen: AxiosRequestConfig | undefined;
+    setup((config) => {
+      seen = config;
+      return { status: 200, data: { recoveryCodes: ["a", "b"] } };
+    });
+    await enable2fa("123456", "enroll-tok");
+    expect(JSON.parse(seen?.data)).toMatchObject({ code: "123456", mfaToken: "enroll-tok" });
   });
 });
