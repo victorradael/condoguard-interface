@@ -66,3 +66,138 @@ export const EXPENSE_DESCRIPTIONS: ExpenseDescription[] = [
   "Gás",
   "Outros",
 ];
+
+// --- Tipos de blocos, unidades, pessoas e vínculos (FAB-19) ---
+
+export interface Block {
+  id: string;
+  name: string;
+  unitCount: number;
+  createdAt: string;
+}
+
+export interface Unit {
+  id: string;
+  unitNumber: string;
+  floor?: number | null;
+  blockId?: string | null;
+  blockName?: string | null;
+  condominiumId?: string;
+}
+
+export type UnitLinkKind =
+  | "proprietario"
+  | "coproprietario"
+  | "inquilino"
+  | "morador"
+  | "dependente";
+
+export interface UnitLink {
+  id: string;
+  unitId: string;
+  personId: string;
+  personName: string;
+  kind: UnitLinkKind;
+  startsOn: string;
+  endsOn?: string | null;
+  active: boolean;
+}
+
+export interface PersonUnit {
+  linkId: string;
+  unitId: string;
+  unitNumber: string;
+  blockName?: string | null;
+  kind: UnitLinkKind;
+  startsOn: string;
+  endsOn?: string | null;
+  active: boolean;
+}
+
+export interface Person {
+  id: string;
+  fullName: string;
+  cpf?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  hasAccount?: boolean;
+  units?: PersonUnit[];
+}
+
+export interface InvitationRecord {
+  id: string;
+  status: "pending" | "accepted" | "revoked" | "expired";
+  channel: "email" | "link";
+  createdAt: string;
+  expiresAt: string;
+  token?: string;
+  link?: string;
+}
+
+export interface InviteSendResponse {
+  id: string;
+  status: string;
+  token?: string;
+  link?: string;
+}
+
+export interface InviteInspectResponse {
+  condominiumName: string;
+  personName: string;
+  email: string;
+  accountExists: boolean;
+}
+
+export interface InviteAcceptResponse {
+  condominiumId: string;
+  email: string;
+  verifyEmail: boolean;
+}
+
+export interface TransferResult {
+  created: UnitLink;
+  ended: UnitLink[];
+}
+
+export interface ImportRow {
+  line: number;
+  block?: string;
+  unit: string;
+  kind?: string;
+  person?: string;
+  action: "create" | "update" | "unchanged" | "error";
+}
+
+export interface ImportError {
+  line: number;
+  field?: string;
+  message: string;
+}
+
+export interface ImportPreviewResponse {
+  valid: boolean;
+  rows: number;
+  newBlocks: number;
+  newUnits: number;
+  newPeople: number;
+  newLinks: number;
+  unchanged: number;
+  errorCount: number;
+  errors: ImportError[];
+  preview: ImportRow[];
+  truncated: boolean;
+}
+
+export type CreateUnitLinkBody =
+  | {
+      personId: string;
+      kind: UnitLinkKind;
+      startsOn?: string;
+      endsOn?: string;
+    }
+  | {
+      person: { fullName: string; cpf?: string; email?: string; phone?: string };
+      kind: UnitLinkKind;
+      startsOn?: string;
+      endsOn?: string;
+    };

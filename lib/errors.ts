@@ -1,10 +1,15 @@
 import { isAxiosError } from "axios";
 
 // Mensagem de erro da API ({ error }) ou o texto padrão.
+// Inclui 409 (conflito) e 422 (validação), além de 403 e 404 com fallback.
 export const apiErrorMessage = (err: unknown, fallback: string) => {
   if (isAxiosError(err)) {
+    const status = err.response?.status;
     const msg = (err.response?.data as { error?: string } | undefined)?.error;
-    if (msg && err.response?.status === 422) return msg;
+    if (msg && (status === 422 || status === 409)) return msg;
+    if (status === 403) return "Você não tem permissão para esta operação.";
+    if (status === 404) return "Registro não encontrado.";
+    if (status === 422) return msg ?? fallback;
   }
   return fallback;
 };

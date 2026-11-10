@@ -1,14 +1,25 @@
 import type {
+  Block,
   CondominiumOption,
   CreateExpense,
+  CreateUnitLinkBody,
   Expense,
+  ImportPreviewResponse,
+  InviteAcceptResponse,
+  InviteInspectResponse,
+  InvitationRecord,
   LoginMfaResponse,
   Notification,
   Page,
+  Person,
   Resident,
   ShopOwner,
   TotpEnableResponse,
   TotpSetupResponse,
+  TransferResult,
+  Unit,
+  UnitLink,
+  UnitLinkKind,
   User,
   UserRole,
 } from "@/types";
@@ -155,3 +166,96 @@ export const fetchResidents = list<Resident>("/residents");
 
 // Shop Owners
 export const fetchShopOwners = list<ShopOwner>("/shop-owners");
+
+// Blocks
+export const fetchBlocks = (page = 1, pageSize = 20) =>
+  api.get<Page<Block>>("/blocks", { params: { page, pageSize } });
+export const fetchBlock = (id: string) => api.get<Block>(`/blocks/${id}`);
+export const createBlock = (name: string) => api.post<Block>("/blocks", { name });
+export const updateBlock = (id: string, name: string) => api.put<Block>(`/blocks/${id}`, { name });
+export const deleteBlock = (id: string) => api.delete(`/blocks/${id}`);
+
+// Units
+export const fetchUnits = (
+  page = 1,
+  pageSize = 20,
+  blockId?: string,
+  sort?: "number"
+) =>
+  api.get<Page<Unit>>("/units", {
+    params: { page, pageSize, ...(blockId ? { blockId } : {}), ...(sort ? { sort } : {}) },
+  });
+export const fetchUnit = (id: string) => api.get<Unit>(`/units/${id}`);
+export const createUnit = (data: { unitNumber: string; floor?: number; blockId?: string }) =>
+  api.post<Unit>("/units", data);
+export const updateUnit = (
+  id: string,
+  data: { unitNumber?: string; floor?: number; blockId?: string | "" }
+) => api.put<Unit>(`/units/${id}`, data);
+export const deleteUnit = (id: string) => api.delete(`/units/${id}`);
+
+// People
+export const fetchPeople = (page = 1, pageSize = 20, q?: string, unitId?: string) =>
+  api.get<Page<Person>>("/people", {
+    params: { page, pageSize, ...(q ? { q } : {}), ...(unitId ? { unitId } : {}) },
+  });
+export const fetchPerson = (id: string) => api.get<Person>(`/people/${id}`);
+export const createPerson = (data: {
+  fullName: string;
+  cpf?: string;
+  email?: string;
+  phone?: string;
+}) => api.post<Person>("/people", data);
+export const updatePerson = (
+  id: string,
+  data: { fullName?: string; cpf?: string; email?: string; phone?: string }
+) => api.put<Person>(`/people/${id}`, data);
+export const deletePerson = (id: string) => api.delete(`/people/${id}`);
+
+// Unit Links
+export const fetchUnitLinks = (unitId: string, active?: boolean) =>
+  api.get<Page<UnitLink>>(`/units/${unitId}/links`, {
+    params: { ...(active !== undefined ? { active } : {}) },
+  });
+export const createUnitLink = (unitId: string, data: CreateUnitLinkBody) =>
+  api.post<UnitLink>(`/units/${unitId}/links`, data);
+export const endUnitLink = (linkId: string, endsOn?: string) =>
+  api.put<UnitLink>(`/links/${linkId}/end`, { ...(endsOn ? { endsOn } : {}) });
+export const deleteUnitLink = (linkId: string) => api.delete(`/links/${linkId}`);
+
+// Transfers
+export const createTransfer = (
+  unitId: string,
+  data: {
+    kind: "proprietario" | "inquilino";
+    effectiveDate?: string;
+    personId?: string;
+    person?: { fullName: string; cpf?: string; email?: string; phone?: string };
+  }
+) => api.post<TransferResult>(`/units/${unitId}/transfers`, data);
+
+// Invitations
+export const sendInvitation = (personId: string, channel: "email" | "link") =>
+  api.post<{ id: string; status: string; token?: string; link?: string }>(
+    `/people/${personId}/invitations`,
+    { channel }
+  );
+export const fetchPersonInvitations = (personId: string) =>
+  api.get<{ items: InvitationRecord[] }>(`/people/${personId}/invitations`);
+export const inspectInvitation = (token: string) =>
+  api.post<InviteInspectResponse>("/auth/invitations/inspect", { token });
+export const acceptInvitation = (data: {
+  token: string;
+  password: string;
+  username?: string;
+}) => api.post<InviteAcceptResponse>("/auth/invitations/accept", data);
+
+// CSV Import
+export const previewImport = (csv: string) =>
+  api.post<ImportPreviewResponse>("/imports/preview", csv, {
+    headers: { "Content-Type": "text/csv" },
+  });
+export const commitImport = (csv: string) =>
+  api.post<ImportPreviewResponse>("/imports", csv, {
+    headers: { "Content-Type": "text/csv" },
+  });

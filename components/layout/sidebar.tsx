@@ -65,6 +65,36 @@ const WalletIcon = () => (
   </svg>
 );
 
+const SquaresIcon = () => (
+  <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"
+    />
+  </svg>
+);
+
+const KeyIcon = () => (
+  <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 0 1 21.75 8.25Z"
+    />
+  </svg>
+);
+
+const UploadIcon = () => (
+  <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+    />
+  </svg>
+);
+
 const LogoutIcon = () => (
   <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
     <path
@@ -76,7 +106,11 @@ const LogoutIcon = () => (
 );
 
 export function Sidebar() {
-  const { isAdmin, logout } = useAuth();
+  const { isAdmin, user, logout } = useAuth();
+  // hasWriteRole check inline to avoid circular dep
+  const canWrite = !!user?.roles?.some((r) =>
+    (["ROLE_ADMIN", "administradora", "sindico"] as readonly string[]).includes(r)
+  );
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -109,9 +143,26 @@ export function Sidebar() {
         {isAdmin ? (
           <>
             <p className="mt-6 mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-white/40">
+              Condomínio
+            </p>
+            <NavLink href="/dashboard/blocos" icon={<SquaresIcon />}>
+              Blocos
+            </NavLink>
+            <NavLink href="/dashboard/unidades" icon={<BuildingIcon />}>
+              Unidades
+            </NavLink>
+            <NavLink href="/dashboard/pessoas" icon={<UsersIcon />}>
+              Pessoas
+            </NavLink>
+            {canWrite ? (
+              <NavLink href="/dashboard/importacao" icon={<UploadIcon />}>
+                Importar CSV
+              </NavLink>
+            ) : null}
+            <p className="mt-6 mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-white/40">
               Administração
             </p>
-            <NavLink href="/dashboard/users" icon={<UsersIcon />}>
+            <NavLink href="/dashboard/users" icon={<KeyIcon />}>
               Usuários
             </NavLink>
             <NavLink href="/dashboard/residents" icon={<BuildingIcon />}>
