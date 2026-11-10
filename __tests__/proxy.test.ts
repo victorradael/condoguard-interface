@@ -93,13 +93,13 @@ describe("proxy", () => {
 
   it("sindico (papel novo) acessa a área de admin", async () => {
     mockMe(200, me(["sindico"]));
-    const res = await middleware(req("/dashboard/users", "cg_access=abc"));
+    const res = await proxy(req("/dashboard/users", "cg_access=abc"));
     expect(res.headers.get("x-middleware-next")).toBe("1");
   });
 
   it("morador (papel novo) não acessa a área de admin", async () => {
     mockMe(200, me(["morador"]));
-    const res = await middleware(req("/dashboard/users", "cg_access=abc"));
+    const res = await proxy(req("/dashboard/users", "cg_access=abc"));
     expect(res.status).toBe(307);
     expect(new URL(res.headers.get("location") as string).pathname).toBe("/dashboard");
   });
